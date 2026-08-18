@@ -1,0 +1,8 @@
+#!/bin/sh
+# Runs the full test suite before every push; the push is aborted on failure.
+echo "Running tests before push..."
+npm test || {
+  echo ""
+  echo "Tests failed - push aborted."
+  exit 1
+}

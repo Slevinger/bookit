@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:emulator": "firebase emulators:exec --only firestore --project bookit-test 'vitest run'"
+    "test:emulator": "firebase emulators:exec --only firestore --project bookit-test 'vitest run'",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
