@@ -39,6 +39,7 @@ export const bookingDraftSchema = z
           type: z.enum(["info", "notification", "action-item"]),
           text: z.string().trim().min(1, "Note text is required"),
           code: z.string().optional(),
+          data: z.record(z.string(), z.number()).optional(),
         }),
       )
       .default([]),
@@ -70,6 +71,7 @@ export const bedShortfallNote = (guests: Guests, rooms: Room[]): BookingNote | n
   return {
     type: "action-item",
     code: BED_SHORTFALL_CODE,
+    data: { party, sleeps },
     text:
       `Not enough beds: ${party} guests but the selected room${rooms.length === 1 ? "" : "s"} ` +
       `sleep${rooms.length === 1 ? "s" : ""} only ${sleeps}. ` +

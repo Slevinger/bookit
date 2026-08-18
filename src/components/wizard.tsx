@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export interface WizardStep {
@@ -24,7 +25,8 @@ export interface WizardProps {
  * One question per screen, big buttons, clear progress — the interaction
  * pattern used by every flow in the app (per product decision: always wizards).
  */
-export function Wizard({ steps, onFinish, finishLabel = "Save", submitting = false }: WizardProps) {
+export function Wizard({ steps, onFinish, finishLabel, submitting = false }: WizardProps) {
+  const { t } = useI18n();
   const [index, setIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const step = steps[index];
@@ -65,7 +67,7 @@ export function Wizard({ steps, onFinish, finishLabel = "Save", submitting = fal
           ))}
         </div>
         <p className="text-sm font-medium text-muted-foreground">
-          Step {index + 1} of {steps.length}
+          {t("wizard.step", { current: index + 1, total: steps.length })}
         </p>
         <h2 className="text-xl font-bold">{step.title}</h2>
       </div>
@@ -83,8 +85,8 @@ export function Wizard({ steps, onFinish, finishLabel = "Save", submitting = fal
       <div className="flex gap-3">
         {index > 0 && (
           <Button type="button" variant="outline" size="lg" className="h-13 flex-1 text-base" onClick={back}>
-            <ArrowLeft className="size-5" />
-            Back
+            <ArrowLeft className="size-5 rtl:-scale-x-100" />
+            {t("wizard.back")}
           </Button>
         )}
         <Button
@@ -97,12 +99,12 @@ export function Wizard({ steps, onFinish, finishLabel = "Save", submitting = fal
           {isLast ? (
             <>
               <Check className="size-5" />
-              {submitting ? "Saving..." : finishLabel}
+              {submitting ? t("wizard.saving") : (finishLabel ?? t("wizard.save"))}
             </>
           ) : (
             <>
-              Next
-              <ArrowRight className="size-5" />
+              {t("wizard.next")}
+              <ArrowRight className="size-5 rtl:-scale-x-100" />
             </>
           )}
         </Button>

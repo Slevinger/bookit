@@ -47,6 +47,8 @@ export interface BookingNote {
   text: string;
   /** Machine tag for auto-generated notes so they can be refreshed on edit. */
   code?: string;
+  /** Structured values behind auto-generated notes, so the UI can localize them. */
+  data?: Record<string, number>;
 }
 
 export interface Booking {

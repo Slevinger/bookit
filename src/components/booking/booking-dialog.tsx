@@ -11,6 +11,7 @@ import {
 import { todayISO, addDays } from "@/lib/domain/dates";
 import type { Booking, BookingDraft, ISODate, Room } from "@/lib/domain/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useI18n } from "@/lib/i18n";
 import { BookingForm, type BookingFormInitial } from "./booking-form";
 
 interface OpenNewOptions {
@@ -33,6 +34,7 @@ export function useBookingDialog(): BookingDialogApi {
 }
 
 export function BookingDialogProvider({ rooms, children }: { rooms: Room[]; children: React.ReactNode }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [initial, setInitial] = useState<BookingFormInitial | null>(null);
 
@@ -65,7 +67,7 @@ export function BookingDialogProvider({ rooms, children }: { rooms: Room[]; chil
       ? await updateBookingAction(editing.id, draft)
       : await createBookingAction(draft);
     if (result.ok) {
-      toast.success(editing ? "Booking updated" : "Booking created");
+      toast.success(editing ? t("booking.updated") : t("booking.created"));
       setInitial(null);
       router.refresh();
     }
@@ -78,7 +80,7 @@ export function BookingDialogProvider({ rooms, children }: { rooms: Room[]; chil
       <Dialog open={initial !== null} onOpenChange={(open) => !open && setInitial(null)}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{initial?.booking ? "Edit booking" : "New booking"}</DialogTitle>
+            <DialogTitle>{initial?.booking ? t("booking.title.edit") : t("booking.title.new")}</DialogTitle>
           </DialogHeader>
           {initial && (
             <BookingForm

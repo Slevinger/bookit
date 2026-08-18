@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Wizard, type WizardStep } from "@/components/wizard";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export interface BookingFormInitial {
@@ -43,7 +44,8 @@ interface ContactForm extends Contact {
 
 const emptyContact = (key: number): ContactForm => ({ key, name: "", phone: "", email: "" });
 
-export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submitLabel = "Save booking" }: BookingFormProps) {
+export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submitLabel }: BookingFormProps) {
+  const { t, tn, noteText, translateError } = useI18n();
   const editing = initial.booking;
   const [checkIn, setCheckIn] = useState(editing?.checkIn ?? initial.checkIn);
   const [checkOut, setCheckOut] = useState(editing?.checkOut ?? initial.checkOut);
@@ -193,7 +195,7 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
     setSubmitting(true);
     const result = await onSubmit(draft);
     setSubmitting(false);
-    if (!result.ok && result.error) setSubmitError(result.error);
+    if (!result.ok && result.error) setSubmitError(translateError(result.error));
   }
 
   const roomName = (roomId: string) => rooms.find((r) => r.id === roomId)?.name ?? roomId;
@@ -201,12 +203,12 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
   const steps: WizardStep[] = [
     {
       id: "dates",
-      title: "When are they staying?",
-      validate: () => (isValidRange(checkIn, checkOut) ? null : "Check-out must be after check-in."),
+      title: t("booking.step.dates"),
+      validate: () => (isValidRange(checkIn, checkOut) ? null : t("booking.error.invalidRange")),
       content: (
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="checkIn" className="text-base">Check-in</Label>
+            <Label htmlFor="checkIn" className="text-base">{t("booking.checkIn")}</Label>
             <Input
               id="checkIn"
               type="date"
@@ -224,13 +226,13 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
             />
           </div>
           <Stepper
-            label="Nights"
+            label={t("booking.nights")}
             value={Math.max(nights, 1)}
             min={1}
             onChange={(value) => setCheckOut(addDays(checkIn, value))}
           />
           <div className="grid gap-2">
-            <Label htmlFor="checkOut" className="text-base">Check-out</Label>
+            <Label htmlFor="checkOut" className="text-base">{t("booking.checkOut")}</Label>
             <Input
               id="checkOut"
               type="date"
@@ -239,30 +241,30 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
               min={checkIn}
               onChange={(e) => setCheckOut(e.target.value)}
             />
-            <p className="text-sm text-muted-foreground">
-              Filled in automatically from the nights — change it only if you need to.
-            </p>
+            <p className="text-sm text-muted-foreground">{t("booking.checkOutHint")}</p>
           </div>
         </div>
       ),
     },
     {
       id: "guests",
-      title: "Who is coming?",
+      title: t("booking.step.guests"),
       content: (
         <div className="grid gap-5">
-          <Stepper label="Adults" value={adults} min={1} onChange={setAdults} />
-          <Stepper label="Children" value={children} min={0} onChange={setChildren} />
+          <Stepper label={t("booking.adults")} value={adults} min={1} onChange={setAdults} />
+          <Stepper label={t("booking.children")} value={children} min={0} onChange={setChildren} />
         </div>
       ),
     },
     {
       id: "rooms",
-      title: "Which rooms?",
+      title: t("booking.step.rooms"),
       validate: () => {
-        if (selectedRooms.length === 0) return "Select at least one room.";
+        if (selectedRooms.length === 0) return t("booking.error.noRooms");
         if (unavailableSelected.length > 0) {
-          return `${unavailableSelected.map((a) => a.room.name).join(", ")} not available for these dates.`;
+          return t("booking.error.unavailable", {
+            rooms: unavailableSelected.map((a) => a.room.name).join(", "),
+          });
         }
         return null;
       },
@@ -290,7 +292,7 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
           {selectedRooms.length > 0 && (
             <div className="grid gap-3 rounded-xl border p-4">
               <p className="text-sm font-medium text-muted-foreground">
-                Price for the whole stay ({nights} night{nights === 1 ? "" : "s"})
+                {t("booking.stayPrice", { nights: tn("booking.nightsCount", nights) })}
               </p>
               {selectedRooms.map(({ roomId, price }) => {
                 const room = rooms.find((r) => r.id === roomId);
@@ -300,12 +302,12 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
                       <p className="truncate text-base">{roomName(roomId)}</p>
                       {room && nights > 0 && (
                         <p className="text-sm text-muted-foreground">
-                          {room.basePrice.toLocaleString()} / night × {nights}
+                          {t("booking.perNight", { price: room.basePrice.toLocaleString(), nights })}
                         </p>
                       )}
                     </div>
                     <Input
-                      aria-label={`Price for ${roomName(roomId)}`}
+                      aria-label={t("booking.priceFor", { room: roomName(roomId) })}
                       type="number"
                       min={0}
                       step="any"
@@ -317,19 +319,21 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
                 );
               })}
               <div className="flex items-center justify-between border-t pt-3 text-base font-semibold">
-                <span>Total for the stay</span>
+                <span>{t("booking.totalForStay")}</span>
                 <span data-testid="booking-total">{total.toLocaleString()}</span>
               </div>
             </div>
           )}
           {unavailableSelected.length > 0 && (
             <p className="text-base font-medium text-destructive">
-              {unavailableSelected.map((a) => a.room.name).join(", ")} not available for these dates.
+              {t("booking.error.unavailable", {
+                rooms: unavailableSelected.map((a) => a.room.name).join(", "),
+              })}
             </p>
           )}
           {bedWarning && (
             <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2.5 text-base font-medium text-amber-600 dark:text-amber-400">
-              {bedWarning.text}
+              {noteText(bedWarning)}
             </p>
           )}
         </div>
@@ -337,30 +341,30 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
     },
     {
       id: "contact",
-      title: "Contact details",
+      title: t("booking.step.contact"),
       validate: () =>
         contacts[0]?.name.trim() && contacts[0]?.phone.trim()
           ? null
-          : "Contact name and phone are required.",
+          : t("booking.error.contactRequired"),
       content: (
         <div className="grid gap-3">
           {contacts.map((contact, index) => (
             <div key={contact.key} className="grid gap-3 rounded-xl border p-4">
               <div className="grid gap-2">
                 <Label htmlFor={`contact-name-${contact.key}`} className="text-base">
-                  Contact name
+                  {t("booking.contactName")}
                 </Label>
                 <Input
                   id={`contact-name-${contact.key}`}
                   className="h-13 text-base"
                   value={contact.name}
                   onChange={(e) => updateContact(contact.key, { name: e.target.value })}
-                  placeholder="Full name"
+                  placeholder={t("booking.contactNamePlaceholder")}
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor={`contact-phone-${contact.key}`} className="text-base">
-                  Phone
+                  {t("booking.phone")}
                 </Label>
                 <Input
                   id={`contact-phone-${contact.key}`}
@@ -374,7 +378,7 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
               <div className="flex items-end gap-2">
                 <div className="grid flex-1 gap-2">
                   <Label htmlFor={`contact-email-${contact.key}`} className="text-base">
-                    Email (optional)
+                    {t("booking.email")}
                   </Label>
                   <Input
                     id={`contact-email-${contact.key}`}
@@ -389,7 +393,7 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
                     type="button"
                     variant="ghost"
                     size="icon-lg"
-                    aria-label="Remove contact"
+                    aria-label={t("booking.removeContact")}
                     onClick={() => setContacts((prev) => prev.filter((c) => c.key !== contact.key))}
                   >
                     <X className="size-5" />
@@ -405,10 +409,10 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
             className="justify-start text-base"
             onClick={() => setContacts((prev) => [...prev, emptyContact(Math.max(...prev.map((c) => c.key)) + 1)])}
           >
-            <Plus className="size-5" /> Add another contact
+            <Plus className="size-5" /> {t("booking.addContact")}
           </Button>
           <div className="grid gap-2">
-            <Label htmlFor="booking-notes" className="text-base">Notes (optional)</Label>
+            <Label htmlFor="booking-notes" className="text-base">{t("booking.notes")}</Label>
             <Textarea
               id="booking-notes"
               className="text-base"
@@ -422,21 +426,35 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
     },
     {
       id: "confirm",
-      title: "Everything correct?",
+      title: t("booking.step.confirm"),
       content: (
         <div className="grid gap-3 text-base">
-          <SummaryRow label="Dates" value={`${checkIn} → ${checkOut} (${nights} night${nights === 1 ? "" : "s"})`} />
-          <SummaryRow label="Guests" value={`${totalGuests({ adults, children })} (${adults} adults, ${children} children)`} />
           <SummaryRow
-            label="Rooms"
+            label={t("booking.summary.dates")}
+            value={`${checkIn} → ${checkOut} (${tn("booking.nightsCount", nights)})`}
+            ltr
+          />
+          <SummaryRow
+            label={t("booking.summary.guests")}
+            value={t("booking.summary.guestsValue", {
+              total: totalGuests({ adults, children }),
+              adults,
+              children,
+            })}
+          />
+          <SummaryRow
+            label={t("booking.summary.rooms")}
             value={selectedRooms.map((r) => `${roomName(r.roomId)} — ${r.price.toLocaleString()}`).join(", ")}
           />
-          <SummaryRow label="Total" value={total.toLocaleString()} strong />
-          <SummaryRow label="Contact" value={`${contacts[0]?.name ?? ""} · ${contacts[0]?.phone ?? ""}`} />
-          {notes && <SummaryRow label="Notes" value={notes} />}
+          <SummaryRow label={t("booking.summary.total")} value={total.toLocaleString()} strong />
+          <SummaryRow
+            label={t("booking.summary.contact")}
+            value={`${contacts[0]?.name ?? ""} · ${contacts[0]?.phone ?? ""}`}
+          />
+          {notes && <SummaryRow label={t("booking.summary.notes")} value={notes} />}
           {bedWarning && (
             <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2.5 font-medium text-amber-600 dark:text-amber-400">
-              {bedWarning.text} A note will be added to the booking.
+              {noteText(bedWarning)} {t("booking.bedWarningNote")}
             </p>
           )}
           {submitError && (
@@ -449,14 +467,33 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
     },
   ];
 
-  return <Wizard steps={steps} onFinish={handleFinish} finishLabel={submitLabel} submitting={submitting} />;
+  return (
+    <Wizard
+      steps={steps}
+      onFinish={handleFinish}
+      finishLabel={submitLabel ?? t("booking.saveBooking")}
+      submitting={submitting}
+    />
+  );
 }
 
-function SummaryRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+function SummaryRow({
+  label,
+  value,
+  strong = false,
+  ltr = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+  ltr?: boolean;
+}) {
   return (
     <div className="flex items-start justify-between gap-4 rounded-lg bg-muted/50 px-4 py-3">
       <span className="text-muted-foreground">{label}</span>
-      <span className={cn("text-right", strong && "font-bold")}>{value}</span>
+      <span className={cn("text-end", strong && "font-bold")} dir={ltr ? "ltr" : undefined}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -472,6 +509,7 @@ function Stepper({
   min: number;
   onChange: (value: number) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="grid gap-2">
       <Label className="text-base">{label}</Label>
@@ -481,13 +519,13 @@ function Stepper({
           variant="outline"
           size="icon-lg"
           className="size-13 rounded-full"
-          aria-label={`Decrease ${label.toLowerCase()}`}
+          aria-label={t("stepper.decrease", { label })}
           disabled={value <= min}
           onClick={() => onChange(Math.max(min, value - 1))}
         >
           <Minus className="size-6" />
         </Button>
-        <span className="w-12 text-center text-2xl font-bold tabular-nums" aria-label={label.toLowerCase()}>
+        <span className="w-12 text-center text-2xl font-bold tabular-nums" aria-label={label}>
           {value}
         </span>
         <Button
@@ -495,7 +533,7 @@ function Stepper({
           variant="outline"
           size="icon-lg"
           className="size-13 rounded-full"
-          aria-label={`Increase ${label.toLowerCase()}`}
+          aria-label={t("stepper.increase", { label })}
           onClick={() => onChange(value + 1)}
         >
           <Plus className="size-6" />

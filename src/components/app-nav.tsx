@@ -2,23 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BedDouble, CalendarDays, ListChecks, LogOut, Plus, Search } from "lucide-react";
+import { BedDouble, CalendarDays, Languages, ListChecks, LogOut, Plus, Search } from "lucide-react";
 import { logout } from "@/lib/auth/actions";
 import type { Room } from "@/lib/domain/types";
 import { useBookingDialog } from "@/components/booking/booking-dialog";
 import { AvailabilitySheet } from "@/components/availability/availability-sheet";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-
-const links = [
-  { href: "/", label: "Calendar", icon: CalendarDays },
-  { href: "/bookings", label: "Bookings", icon: ListChecks },
-  { href: "/rooms", label: "Rooms", icon: BedDouble },
-] as const;
 
 export function AppNav({ rooms }: { rooms: Room[] }) {
   const pathname = usePathname();
   const { openNew } = useBookingDialog();
+  const { t, switchLocale } = useI18n();
+
+  const links = [
+    { href: "/", label: t("nav.calendar"), icon: CalendarDays },
+    { href: "/bookings", label: t("nav.bookings"), icon: ListChecks },
+    { href: "/rooms", label: t("nav.rooms"), icon: BedDouble },
+  ] as const;
 
   return (
     <>
@@ -29,7 +31,7 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
             <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <CalendarDays className="size-5" />
             </span>
-            Bookit
+            {t("appName")}
           </Link>
 
           {/* Desktop links */}
@@ -50,28 +52,37 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
             ))}
           </nav>
 
-          <div className="ml-auto flex items-center gap-2.5">
+          <div className="ms-auto flex items-center gap-2.5">
             {/* Desktop actions */}
             <div className="hidden items-center gap-2.5 md:flex">
               <AvailabilitySheet rooms={rooms}>
                 <Button variant="outline" size="lg" className="text-base">
                   <Search className="size-5" />
-                  Check availability
+                  {t("nav.checkAvailability")}
                 </Button>
               </AvailabilitySheet>
               <Button size="lg" className="text-base" onClick={() => openNew()}>
                 <Plus className="size-5" />
-                New booking
+                {t("nav.newBooking")}
               </Button>
             </div>
             <Button
               variant="ghost"
+              size="lg"
+              onClick={switchLocale}
+              className="gap-1.5 px-2.5 text-muted-foreground"
+            >
+              <Languages className="size-5" />
+              <span className="text-sm font-semibold">{t("nav.language")}</span>
+            </Button>
+            <Button
+              variant="ghost"
               size="icon-lg"
-              aria-label="Sign out"
+              aria-label={t("nav.signOut")}
               onClick={() => logout()}
               className="text-muted-foreground"
             >
-              <LogOut className="size-5" />
+              <LogOut className="size-5 rtl:-scale-x-100" />
             </Button>
           </div>
         </div>
@@ -96,12 +107,12 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
               type="button"
               onClick={() => openNew()}
               className="-mt-6 flex flex-col items-center gap-1"
-              aria-label="New booking"
+              aria-label={t("nav.newBooking")}
             >
               <span className="flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95">
                 <Plus className="size-8" />
               </span>
-              <span className="pb-2 text-xs font-semibold text-primary">New</span>
+              <span className="pb-2 text-xs font-semibold text-primary">{t("nav.new")}</span>
             </button>
           </div>
 
@@ -111,13 +122,13 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
               className="flex flex-col items-center gap-1 py-2.5 text-muted-foreground"
             >
               <Search className="size-7" />
-              <span className="text-xs font-semibold">Check dates</span>
+              <span className="text-xs font-semibold">{t("nav.checkDates")}</span>
             </button>
           </AvailabilitySheet>
 
           <MobileTab
             href="/rooms"
-            label="Rooms"
+            label={t("nav.rooms")}
             icon={BedDouble}
             active={pathname === "/rooms"}
           />

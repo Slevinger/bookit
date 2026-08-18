@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Pencil, Users, XCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Printer, Users, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cancelBookingAction } from "@/lib/actions/bookings";
 import { bookingTotal, totalGuests } from "@/lib/domain/booking";
@@ -14,6 +14,7 @@ import { useBookingDialog } from "@/components/booking/booking-dialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const BAR_COLORS = [
@@ -36,6 +37,7 @@ export interface CalendarViewProps {
 }
 
 export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewProps) {
+  const { t, dateLocale } = useI18n();
   const { openNew } = useBookingDialog();
   const days = eachDateInRange(from, to);
   const today = todayISO();
@@ -53,7 +55,7 @@ export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewP
   };
 
   const [y, m] = month.split("-").map(Number);
-  const monthLabel = new Date(y, m - 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const monthLabel = new Date(y, m - 1).toLocaleDateString(dateLocale, { month: "long", year: "numeric" });
   const prevMonth = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
   const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
   const currentMonth = today.slice(0, 7);
@@ -63,9 +65,9 @@ export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewP
   if (activeRooms.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 py-20 text-center">
-        <p className="text-muted-foreground">No rooms yet. Add your rooms to start booking.</p>
+        <p className="text-muted-foreground">{t("calendar.empty")}</p>
         <Button asChild>
-          <Link href="/rooms">Add rooms</Link>
+          <Link href="/rooms">{t("calendar.addRooms")}</Link>
         </Button>
       </div>
     );
@@ -76,26 +78,40 @@ export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewP
       {/* Month navigation */}
       <div className="flex items-center gap-2.5">
         <Button variant="outline" size="icon-lg" className="size-11" asChild>
-          <Link href={`/?month=${prevMonth}`} aria-label="Previous month"><ChevronLeft className="size-6" /></Link>
+          <Link href={`/?month=${prevMonth}`} aria-label={t("calendar.prevMonth")}>
+            <ChevronLeft className="size-6 rtl:-scale-x-100" />
+          </Link>
         </Button>
         <Button variant="outline" size="icon-lg" className="size-11" asChild>
-          <Link href={`/?month=${nextMonth}`} aria-label="Next month"><ChevronRight className="size-6" /></Link>
+          <Link href={`/?month=${nextMonth}`} aria-label={t("calendar.nextMonth")}>
+            <ChevronRight className="size-6 rtl:-scale-x-100" />
+          </Link>
         </Button>
         <h1 className="text-xl font-bold">{monthLabel}</h1>
         {month !== currentMonth && (
           <Button variant="ghost" size="lg" className="text-base" asChild>
-            <Link href="/">Today</Link>
+            <Link href="/">{t("calendar.today")}</Link>
           </Button>
         )}
+        <Button
+          variant="outline"
+          size="icon-lg"
+          className="ms-auto size-11"
+          asChild
+        >
+          <Link href={`/print/${month}`} target="_blank" aria-label={t("print.export")}>
+            <Printer className="size-6" />
+          </Link>
+        </Button>
       </div>
 
-      {/* Grid */}
-      <div className="overflow-x-auto rounded-lg border">
+      {/* Grid — always LTR: bar positioning is left-based and the date axis reads left-to-right. */}
+      <div dir="ltr" className="overflow-x-auto rounded-lg border">
         <div className="min-w-fit">
           {/* Day header */}
           <div className="flex border-b bg-muted/50">
             <div className="sticky left-0 z-20 w-24 shrink-0 border-r bg-muted px-2 py-2 text-sm font-medium sm:w-36">
-              Room
+              {t("calendar.room")}
             </div>
             <div className="grid flex-1" style={gridTemplate}>
               {days.map((day) => (
@@ -109,7 +125,7 @@ export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewP
                     day === today && "bg-primary/15 font-bold text-primary",
                   )}
                 >
-                  <div>{new Date(day + "T00:00:00").toLocaleDateString(undefined, { weekday: "short" })}</div>
+                  <div>{new Date(day + "T00:00:00").toLocaleDateString(dateLocale, { weekday: "short" })}</div>
                   <div className="text-base font-semibold">{Number(day.slice(8, 10))}</div>
                 </div>
               ))}
@@ -133,7 +149,7 @@ export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewP
                       <button
                         key={day}
                         type="button"
-                        aria-label={`Book ${room.name} on ${day}`}
+                        aria-label={t("calendar.bookAria", { room: room.name, day })}
                         onClick={() => openNew({ checkIn: day, checkOut: addDays(day, 1), roomIds: [room.id] })}
                         className={cn(
                           "border-r transition-colors last:border-r-0 hover:bg-accent active:bg-accent",
@@ -163,7 +179,7 @@ export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewP
           })}
         </div>
       </div>
-      <p className="text-sm text-muted-foreground">Tap an empty day to add a booking. Tap a booking for details.</p>
+      <p className="text-sm text-muted-foreground">{t("calendar.hint")}</p>
     </div>
   );
 }
@@ -185,16 +201,17 @@ function BookingBar({
 }) {
   const router = useRouter();
   const { openEdit } = useBookingDialog();
+  const { t, tn, noteText, translateError } = useI18n();
   const contact = booking.contacts[0];
 
   async function handleCancel() {
-    if (!confirm(`Cancel booking for ${contact?.name}?`)) return;
+    if (!confirm(t("booking.cancelConfirm", { name: contact?.name ?? "" }))) return;
     const result = await cancelBookingAction(booking.id);
     if (result.ok) {
-      toast.success("Booking cancelled");
+      toast.success(t("booking.cancelled"));
       router.refresh();
     } else {
-      toast.error(result.error);
+      toast.error(result.error ? translateError(result.error) : t("error.generic"));
     }
   }
 
@@ -218,14 +235,16 @@ function BookingBar({
       <PopoverContent className="w-72" align="start">
         <div className="grid gap-2 text-sm">
           <div className="font-semibold">{contact?.name}</div>
-          <div className="text-muted-foreground">
+          <div className="text-muted-foreground" dir="ltr">
             {booking.checkIn} → {booking.checkOut}
           </div>
           <div className="flex items-center gap-1.5">
             <Users className="size-3.5 text-muted-foreground" />
-            {booking.guests.adults} adult{booking.guests.adults === 1 ? "" : "s"}
-            {booking.guests.children > 0 && `, ${booking.guests.children} child${booking.guests.children === 1 ? "" : "ren"}`}
-            <span className="text-muted-foreground">({totalGuests(booking.guests)} total)</span>
+            {tn("calendar.adults", booking.guests.adults)}
+            {booking.guests.children > 0 && `, ${tn("calendar.children", booking.guests.children)}`}
+            <span className="text-muted-foreground">
+              {t("calendar.totalGuests", { n: totalGuests(booking.guests) })}
+            </span>
           </div>
           <div>
             {booking.rooms.map((br) => (
@@ -236,7 +255,7 @@ function BookingBar({
             ))}
             {booking.rooms.length > 1 && (
               <div className="mt-1 flex justify-between border-t pt-1 font-medium">
-                <span>Total</span>
+                <span>{t("booking.summary.total")}</span>
                 <span className="tabular-nums">{bookingTotal(booking.rooms).toLocaleString()}</span>
               </div>
             )}
@@ -260,8 +279,8 @@ function BookingBar({
                       "bg-destructive/10 font-medium text-destructive",
                   )}
                 >
-                  {note.type === "action-item" && "To do: "}
-                  {note.text}
+                  {note.type === "action-item" && t("booking.todo")}
+                  {noteText(note)}
                 </p>
               ))}
             </div>
@@ -269,10 +288,10 @@ function BookingBar({
           <Separator />
           <div className="flex gap-2">
             <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(booking)}>
-              <Pencil className="size-3.5" /> Edit
+              <Pencil className="size-3.5" /> {t("booking.edit")}
             </Button>
             <Button size="sm" variant="outline" className="flex-1 text-destructive" onClick={handleCancel}>
-              <XCircle className="size-3.5" /> Cancel
+              <XCircle className="size-3.5" /> {t("booking.cancel")}
             </Button>
           </div>
         </div>

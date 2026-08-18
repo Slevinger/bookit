@@ -12,9 +12,11 @@ import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export function BookingsList({ bookings, rooms }: { bookings: Booking[]; rooms: Room[] }) {
+  const { t } = useI18n();
   const { openEdit } = useBookingDialog();
   const [query, setQuery] = useState("");
   const [showPast, setShowPast] = useState(false);
@@ -41,18 +43,18 @@ export function BookingsList({ bookings, rooms }: { bookings: Booking[]; rooms: 
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-lg font-semibold">Bookings</h1>
-        <div className="relative ml-auto w-full sm:w-64">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+        <h1 className="text-lg font-semibold">{t("list.title")}</h1>
+        <div className="relative ms-auto w-full sm:w-64">
+          <Search className="absolute start-2.5 top-2.5 size-4 text-muted-foreground" />
           <Input
-            placeholder="Search guest, phone, room..."
-            className="pl-8"
+            placeholder={t("list.search")}
+            className="ps-8"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
         <Button variant="outline" size="sm" onClick={() => setShowPast((v) => !v)}>
-          {showPast ? "Hide past" : "Show past"}
+          {showPast ? t("list.hidePast") : t("list.showPast")}
         </Button>
       </div>
 
@@ -60,12 +62,12 @@ export function BookingsList({ bookings, rooms }: { bookings: Booking[]; rooms: 
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Guest</TableHead>
-              <TableHead>Dates</TableHead>
-              <TableHead>Rooms</TableHead>
-              <TableHead className="text-center">Guests</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t("list.guest")}</TableHead>
+              <TableHead>{t("list.dates")}</TableHead>
+              <TableHead>{t("list.rooms")}</TableHead>
+              <TableHead className="text-center">{t("list.guests")}</TableHead>
+              <TableHead className="text-end">{t("list.total")}</TableHead>
+              <TableHead>{t("list.status")}</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -73,7 +75,7 @@ export function BookingsList({ bookings, rooms }: { bookings: Booking[]; rooms: 
             {filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                  No bookings found.
+                  {t("list.empty")}
                 </TableCell>
               </TableRow>
             )}
@@ -92,26 +94,28 @@ export function BookingsList({ bookings, rooms }: { bookings: Booking[]; rooms: 
                       </a>
                     )}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-sm">
+                  <TableCell className="whitespace-nowrap text-sm" dir="ltr">
                     {booking.checkIn} → {booking.checkOut}
                   </TableCell>
                   <TableCell className="text-sm">
                     {booking.rooms.map((r) => roomName(r.roomId)).join(", ")}
                   </TableCell>
                   <TableCell className="text-center text-sm">{totalGuests(booking.guests)}</TableCell>
-                  <TableCell className="text-right text-sm tabular-nums">
+                  <TableCell className="text-end text-sm tabular-nums">
                     {bookingTotal(booking.rooms).toLocaleString()}
                   </TableCell>
                   <TableCell>
                     <Badge variant={booking.status === "confirmed" ? "default" : "secondary"}>
-                      {booking.status}
+                      {booking.status === "confirmed"
+                        ? t("booking.status.confirmed")
+                        : t("booking.status.cancelled")}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label="Edit booking"
+                      aria-label={t("list.editAria")}
                       onClick={() => openEdit(booking)}
                     >
                       <Pencil className="size-4" />

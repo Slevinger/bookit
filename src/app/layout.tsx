@@ -1,9 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Noto_Sans_Hebrew } from "next/font/google";
+import { cookies } from "next/headers";
 import { Toaster } from "@/components/ui/sonner";
+// Constants must come from the server-safe dictionaries module: importing them
+// through the "use client" i18n barrel yields client-reference proxies here.
+import { DEFAULT_LOCALE, LOCALE_COOKIE, type Locale } from "@/lib/i18n/dictionaries";
+import { LocaleProvider } from "@/lib/i18n";
 import "./globals.css";
 
-const geist = Geist({ subsets: ["latin"] });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+const hebrew = Noto_Sans_Hebrew({ subsets: ["hebrew"], variable: "--font-hebrew" });
 
 export const metadata: Metadata = {
   title: "BookIt — B&B Manager",
@@ -16,12 +22,20 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const cookieLocale = (await cookies()).get(LOCALE_COOKIE)?.value;
+  const locale: Locale = cookieLocale === "en" ? "en" : DEFAULT_LOCALE;
+
   return (
-    <html lang="en" className="dark">
-      <body className={`${geist.className} min-h-dvh bg-background antialiased`}>
-        {children}
-        <Toaster position="top-center" richColors />
+    <html lang={locale} dir={locale === "he" ? "rtl" : "ltr"} className="dark">
+      <body
+        className={`${geist.variable} ${hebrew.variable} min-h-dvh bg-background font-sans antialiased`}
+        style={{ fontFamily: "var(--font-geist), var(--font-hebrew), sans-serif" }}
+      >
+        <LocaleProvider locale={locale}>
+          {children}
+          <Toaster position="top-center" richColors />
+        </LocaleProvider>
       </body>
     </html>
   );

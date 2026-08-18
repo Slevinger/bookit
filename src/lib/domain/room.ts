@@ -19,10 +19,3 @@ export type RoomDraft = z.infer<typeof roomDraftSchema>;
 
 /** A double bed sleeps two guests, a single sleeps one. */
 export const roomCapacity = (beds: Beds): number => beds.double * 2 + beds.single;
-
-export const formatBeds = (beds: Beds): string => {
-  const parts: string[] = [];
-  if (beds.double > 0) parts.push(`${beds.double} double${beds.double === 1 ? "" : "s"}`);
-  if (beds.single > 0) parts.push(`${beds.single} single${beds.single === 1 ? "" : "s"}`);
-  return parts.join(", ");
-};

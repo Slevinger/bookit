@@ -43,3 +43,11 @@ export const todayISO = (): ISODate => {
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 10);
 };
+
+/** Resolves a YYYY-MM string (falling back to the current month) to its date window. */
+export const monthWindow = (month?: string): { from: ISODate; to: ISODate; month: string } => {
+  const valid = month && /^\d{4}-\d{2}$/.test(month) ? month : todayISO().slice(0, 7);
+  const [y, m] = valid.split("-").map(Number);
+  const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+  return { from: `${valid}-01`, to: `${nextMonth}-01`, month: valid };
+};

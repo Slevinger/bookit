@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { roomDraftSchema, roomCapacity, formatBeds } from "./room";
+import { roomDraftSchema, roomCapacity } from "./room";
 
 describe("roomDraftSchema", () => {
   it("accepts a valid room and applies defaults", () => {
@@ -47,13 +47,5 @@ describe("roomCapacity", () => {
     expect(roomCapacity({ double: 1, single: 0 })).toBe(2);
     expect(roomCapacity({ double: 1, single: 2 })).toBe(4);
     expect(roomCapacity({ double: 0, single: 3 })).toBe(3);
-  });
-});
-
-describe("formatBeds", () => {
-  it("describes the beds in plain words", () => {
-    expect(formatBeds({ double: 1, single: 0 })).toBe("1 double");
-    expect(formatBeds({ double: 1, single: 2 })).toBe("1 double, 2 singles");
-    expect(formatBeds({ double: 2, single: 1 })).toBe("2 doubles, 1 single");
   });
 });

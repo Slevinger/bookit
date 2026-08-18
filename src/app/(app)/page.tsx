@@ -1,16 +1,8 @@
 import { getContainer } from "@/lib/container";
-import { addDays, todayISO } from "@/lib/domain/dates";
+import { addDays, monthWindow } from "@/lib/domain/dates";
 import { CalendarView } from "@/components/calendar/calendar-view";
 
 export const dynamic = "force-dynamic";
-
-function monthWindow(month?: string): { from: string; to: string; month: string } {
-  const valid = month && /^\d{4}-\d{2}$/.test(month) ? month : todayISO().slice(0, 7);
-  const [y, m] = valid.split("-").map(Number);
-  const from = `${valid}-01`;
-  const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
-  return { from, to: `${nextMonth}-01`, month: valid };
-}
 
 export default async function CalendarPage({
   searchParams,

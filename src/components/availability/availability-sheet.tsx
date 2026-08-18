@@ -15,9 +15,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useI18n } from "@/lib/i18n";
 import { AvailabilityTimeline } from "./availability-timeline";
 
 export function AvailabilitySheet({ children }: { rooms: Room[]; children: React.ReactNode }) {
+  const { t, tn } = useI18n();
   const { openNew } = useBookingDialog();
   const [open, setOpen] = useState(false);
   const [checkIn, setCheckIn] = useState(todayISO());
@@ -52,30 +54,28 @@ export function AvailabilitySheet({ children }: { rooms: Room[]; children: React
       <SheetTrigger asChild>{children}</SheetTrigger>
       <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto p-4 sm:p-6">
         <SheetHeader className="p-0">
-          <SheetTitle>Check availability</SheetTitle>
-          <SheetDescription>Pick dates to see every room on the timeline.</SheetDescription>
+          <SheetTitle>{t("availability.title")}</SheetTitle>
+          <SheetDescription>{t("availability.description")}</SheetDescription>
         </SheetHeader>
 
         <div className="mx-auto grid w-full max-w-3xl gap-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="avail-from">From</Label>
+              <Label htmlFor="avail-from">{t("availability.from")}</Label>
               <Input id="avail-from" type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="avail-to">To</Label>
+              <Label htmlFor="avail-to">{t("availability.to")}</Label>
               <Input id="avail-to" type="date" value={checkOut} min={checkIn} onChange={(e) => setCheckOut(e.target.value)} />
             </div>
           </div>
 
-          {loading && <p className="text-sm text-muted-foreground">Checking...</p>}
+          {loading && <p className="text-sm text-muted-foreground">{t("availability.checking")}</p>}
 
           {result && !loading && (
             <>
               <p className="text-sm text-muted-foreground">
-                {freeCount === 0
-                  ? "No rooms available for these dates."
-                  : `${freeCount} room${freeCount === 1 ? "" : "s"} available.`}
+                {freeCount === 0 ? t("availability.none") : tn("availability.count", freeCount)}
               </p>
               <AvailabilityTimeline result={result} checkIn={checkIn} checkOut={checkOut} onBook={handleBook} />
             </>
