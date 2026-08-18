@@ -10,7 +10,11 @@ export interface WizardStep {
   id: string;
   title: string;
   content: React.ReactNode;
-  /** Return an error message to block moving forward, or null when valid. */
+  /**
+   * Return an error message to block moving forward, or null when valid.
+   * Return an empty string to block silently (when the step already shows
+   * the error inline).
+   */
   validate?: () => string | null;
 }
 
@@ -34,8 +38,8 @@ export function Wizard({ steps, onFinish, finishLabel, submitting = false }: Wiz
 
   function next() {
     const message = step.validate?.() ?? null;
-    if (message) {
-      setError(message);
+    if (message !== null) {
+      setError(message || null);
       return;
     }
     setError(null);

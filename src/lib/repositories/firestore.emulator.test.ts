@@ -29,13 +29,14 @@ describe.skipIf(!emulator)("firestore repositories (emulator)", () => {
       "./firestore"
     );
     const db = getDb();
+    const tenant = db.collection("tenants").doc("test-tenant");
     for (const name of ["rooms", "bookings"]) {
-      const snap = await db.collection(name).get();
+      const snap = await tenant.collection(name).get();
       await Promise.all(snap.docs.map((d) => d.ref.delete()));
     }
     return {
-      bookingRepo: createFirestoreBookingRepository(db),
-      roomRepo: createFirestoreRoomRepository(db),
+      bookingRepo: createFirestoreBookingRepository(tenant.collection("bookings")),
+      roomRepo: createFirestoreRoomRepository(tenant.collection("rooms")),
     };
   }
 

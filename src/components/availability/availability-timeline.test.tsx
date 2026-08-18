@@ -21,8 +21,8 @@ const conflict: Booking = {
 };
 
 const result: RoomAvailability[] = [
-  { room: room("r1", "Garden"), available: false, conflicts: [conflict] },
-  { room: room("r2", "Loft"), available: true, conflicts: [] },
+  { room: room("r1", "Garden"), available: false, conflicts: [conflict], overlapping: [conflict] },
+  { room: room("r2", "Loft"), available: true, conflicts: [], overlapping: [] },
 ];
 
 describe("AvailabilityTimeline", () => {

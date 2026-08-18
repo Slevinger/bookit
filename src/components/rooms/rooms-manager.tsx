@@ -6,6 +6,7 @@ import { BedDouble, BedSingle, Minus, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { createRoomAction, updateRoomAction } from "@/lib/actions/rooms";
 import { roomCapacity } from "@/lib/domain/room";
+import { formatMoney } from "@/lib/format";
 import type { Room } from "@/lib/domain/types";
 import type { RoomInput } from "@/lib/services/room-service";
 import { Badge } from "@/components/ui/badge";
@@ -91,7 +92,7 @@ export function RoomsManager({ rooms }: { rooms: Room[] }) {
               <span className="flex items-center gap-1.5">
                 <BedSingle className="size-4" /> {tn("beds.single", room.beds.single)}
               </span>
-              <span>{t("rooms.perNightShort", { price: room.basePrice.toLocaleString() })}</span>
+              <span>{t("rooms.perNightShort", { price: formatMoney(room.basePrice) })}</span>
             </div>
             {room.description && (
               <p className="truncate text-sm text-muted-foreground">{room.description}</p>
@@ -259,7 +260,7 @@ function RoomWizard({ room, onDone }: { room?: Room; onDone: () => void }) {
           {draft.description && <SummaryRow label={t("rooms.summary.description")} value={draft.description} />}
           <SummaryRow label={t("rooms.summary.beds")} value={formatBeds(draft.beds)} />
           <SummaryRow label={t("rooms.summary.sleeps")} value={String(roomCapacity(draft.beds))} />
-          <SummaryRow label={t("rooms.summary.price")} value={Number(draft.basePrice || 0).toLocaleString()} />
+          <SummaryRow label={t("rooms.summary.price")} value={formatMoney(Number(draft.basePrice || 0))} />
         </div>
       ),
     },

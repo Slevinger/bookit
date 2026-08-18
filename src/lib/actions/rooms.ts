@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
-import { getContainer } from "@/lib/container";
+import { getTenantContainer } from "@/lib/container";
+import { requireTenant } from "@/lib/auth/tenant";
 import type { RoomInput } from "@/lib/services/room-service";
 import type { Room } from "@/lib/domain/types";
 import type { ActionResult } from "./bookings";
@@ -14,7 +15,8 @@ function toError(error: unknown): string {
 
 export async function createRoomAction(input: RoomInput): Promise<ActionResult<Room>> {
   try {
-    const room = await getContainer().roomService.createRoom(input);
+    const { roomService } = getTenantContainer(await requireTenant());
+    const room = await roomService.createRoom(input);
     revalidatePath("/rooms");
     revalidatePath("/");
     return { ok: true, data: room };
@@ -28,7 +30,8 @@ export async function updateRoomAction(
   patch: Partial<RoomInput>,
 ): Promise<ActionResult<Room>> {
   try {
-    const room = await getContainer().roomService.updateRoom(id, patch);
+    const { roomService } = getTenantContainer(await requireTenant());
+    const room = await roomService.updateRoom(id, patch);
     revalidatePath("/rooms");
     revalidatePath("/");
     return { ok: true, data: room };

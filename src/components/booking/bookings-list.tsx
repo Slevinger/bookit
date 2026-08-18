@@ -1,8 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Pencil, Search } from "lucide-react";
-import { bookingTotal, totalGuests } from "@/lib/domain/booking";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, Pencil, Search } from "lucide-react";
+import { toast } from "sonner";
+import { confirmBookingAction } from "@/lib/actions/bookings";
+import { bookingTotal, isEntireProperty, totalGuests } from "@/lib/domain/booking";
+import { formatMoney } from "@/lib/format";
 import { todayISO } from "@/lib/domain/dates";
 import type { Booking, Room } from "@/lib/domain/types";
 import { useBookingDialog } from "@/components/booking/booking-dialog";
@@ -16,13 +20,64 @@ import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export function BookingsList({ bookings, rooms }: { bookings: Booking[]; rooms: Room[] }) {
-  const { t } = useI18n();
+  const { t, translateError } = useI18n();
   const { openEdit } = useBookingDialog();
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [showPast, setShowPast] = useState(false);
   const today = todayISO();
 
+  async function handleApprove(id: string) {
+    const result = await confirmBookingAction(id);
+    if (result.ok) {
+      toast.success(t("booking.confirmed"));
+      router.refresh();
+    } else {
+      toast.error(result.error ? translateError(result.error) : t("error.generic"));
+    }
+  }
+
   const roomName = (id: string) => rooms.find((r) => r.id === id)?.name ?? id;
+
+  const roomsLabel = (booking: Booking) =>
+    isEntireProperty(booking.rooms.map((r) => r.roomId), rooms)
+      ? t("booking.entireProperty")
+      : booking.rooms.map((r) => roomName(r.roomId)).join(", ");
+
+  const statusBadge = (booking: Booking) =>
+    booking.status === "tentative" ? (
+      <Badge className="bg-yellow-400 text-yellow-950 hover:bg-yellow-400">
+        {t("booking.status.tentative")}
+      </Badge>
+    ) : (
+      <Badge variant={booking.status === "confirmed" ? "default" : "secondary"}>
+        {booking.status === "confirmed"
+          ? t("booking.status.confirmed")
+          : t("booking.status.cancelled")}
+      </Badge>
+    );
+
+  const rowActions = (booking: Booking) => (
+    <div className="flex items-center justify-end gap-2">
+      {booking.status === "tentative" && (
+        <Button
+          size="sm"
+          className="bg-emerald-600 text-white shadow-sm hover:bg-emerald-600/90"
+          onClick={() => handleApprove(booking.id)}
+        >
+          <CheckCircle2 className="size-4" /> {t("booking.approve")}
+        </Button>
+      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label={t("list.editAria")}
+        onClick={() => openEdit(booking)}
+      >
+        <Pencil className="size-4" />
+      </Button>
+    </div>
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -58,7 +113,58 @@ export function BookingsList({ bookings, rooms }: { bookings: Booking[]; rooms: 
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
+      {filtered.length === 0 && (
+        <p className="rounded-lg border py-10 text-center text-muted-foreground">
+          {t("list.empty")}
+        </p>
+      )}
+
+      {/* Mobile: cards so nothing is hidden behind a horizontal scroll. */}
+      <div className="grid gap-2.5 sm:hidden">
+        {filtered.map((booking) => {
+          const contact = booking.contacts[0];
+          return (
+            <div
+              key={booking.id}
+              className={cn(
+                "grid gap-2 rounded-lg border p-3",
+                booking.status === "cancelled" && "opacity-50",
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate font-medium">{contact?.name}</div>
+                  {contact?.phone && (
+                    <a href={`tel:${contact.phone}`} className="text-xs text-muted-foreground" dir="ltr">
+                      {contact.phone}
+                    </a>
+                  )}
+                </div>
+                {statusBadge(booking)}
+              </div>
+              <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+                <span dir="ltr">{booking.checkIn} → {booking.checkOut}</span>
+                <span className="font-semibold tabular-nums text-foreground">
+                  {formatMoney(bookingTotal(booking.rooms))}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate text-sm">
+                  {roomsLabel(booking)}
+                  <span className="text-muted-foreground">
+                    {" · "}
+                    {t("list.guests")}: {totalGuests(booking.guests)}
+                  </span>
+                </span>
+                {rowActions(booking)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop: full table. */}
+      <div className="hidden overflow-x-auto rounded-lg border sm:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -72,13 +178,6 @@ export function BookingsList({ bookings, rooms }: { bookings: Booking[]; rooms: 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                  {t("list.empty")}
-                </TableCell>
-              </TableRow>
-            )}
             {filtered.map((booking) => {
               const contact = booking.contacts[0];
               return (
@@ -97,30 +196,13 @@ export function BookingsList({ bookings, rooms }: { bookings: Booking[]; rooms: 
                   <TableCell className="whitespace-nowrap text-sm" dir="ltr">
                     {booking.checkIn} → {booking.checkOut}
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {booking.rooms.map((r) => roomName(r.roomId)).join(", ")}
-                  </TableCell>
+                  <TableCell className="text-sm">{roomsLabel(booking)}</TableCell>
                   <TableCell className="text-center text-sm">{totalGuests(booking.guests)}</TableCell>
                   <TableCell className="text-end text-sm tabular-nums">
-                    {bookingTotal(booking.rooms).toLocaleString()}
+                    {formatMoney(bookingTotal(booking.rooms))}
                   </TableCell>
-                  <TableCell>
-                    <Badge variant={booking.status === "confirmed" ? "default" : "secondary"}>
-                      {booking.status === "confirmed"
-                        ? t("booking.status.confirmed")
-                        : t("booking.status.cancelled")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t("list.editAria")}
-                      onClick={() => openEdit(booking)}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                  </TableCell>
+                  <TableCell>{statusBadge(booking)}</TableCell>
+                  <TableCell>{rowActions(booking)}</TableCell>
                 </TableRow>
               );
             })}

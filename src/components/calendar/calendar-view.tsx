@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Pencil, Printer, Users, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Pencil, Printer, Users, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { cancelBookingAction } from "@/lib/actions/bookings";
-import { bookingTotal, totalGuests } from "@/lib/domain/booking";
+import { cancelBookingAction, confirmBookingAction } from "@/lib/actions/bookings";
+import { bookingTotal, isEntireProperty, totalGuests } from "@/lib/domain/booking";
+import { formatMoney } from "@/lib/format";
 import { layoutRoomBars } from "@/lib/domain/calendar-layout";
 import { addDays, eachDateInRange, todayISO } from "@/lib/domain/dates";
 import type { Booking, ISODate, Room } from "@/lib/domain/types";
@@ -22,10 +23,17 @@ const BAR_COLORS = [
   "bg-rose-600", "bg-teal-600", "bg-indigo-600", "bg-orange-600",
 ];
 
-function barColor(bookingId: string): string {
+// Tentative (not-yet-confirmed) bookings read as an "empty" hold: a dashed
+// yellow outline with a faint yellow fill, so they look unconfirmed regardless
+// of the booking id.
+const TENTATIVE_BAR =
+  "border-2 border-dashed border-yellow-500 bg-yellow-400/30 text-yellow-900 dark:text-yellow-100";
+
+function barClasses(booking: Booking): string {
+  if (booking.status === "tentative") return TENTATIVE_BAR;
   let hash = 0;
-  for (const char of bookingId) hash = (hash * 31 + char.charCodeAt(0)) | 0;
-  return BAR_COLORS[Math.abs(hash) % BAR_COLORS.length];
+  for (const char of booking.id) hash = (hash * 31 + char.charCodeAt(0)) | 0;
+  return `${BAR_COLORS[Math.abs(hash) % BAR_COLORS.length]} text-white`;
 }
 
 export interface CalendarViewProps {
@@ -215,26 +223,44 @@ function BookingBar({
     }
   }
 
+  async function handleApprove() {
+    const result = await confirmBookingAction(booking.id);
+    if (result.ok) {
+      toast.success(t("booking.confirmed"));
+      router.refresh();
+    } else {
+      toast.error(result.error ? translateError(result.error) : t("error.generic"));
+    }
+  }
+
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
           className={cn(
-            "absolute inset-y-2 z-10 flex items-center truncate px-2.5 text-sm font-medium text-white shadow-sm transition-opacity hover:opacity-90",
-            barColor(booking.id),
+            "absolute inset-y-2 z-10 flex items-center gap-1.5 truncate px-2.5 text-sm font-medium shadow-sm transition-opacity hover:opacity-90",
+            barClasses(booking),
             past && "opacity-50 saturate-50",
             clippedStart ? "rounded-l-none" : "rounded-l-md",
             clippedEnd ? "rounded-r-none" : "rounded-r-md",
           )}
           style={style}
         >
+          {booking.status === "tentative" && <span aria-hidden className="text-xs">●</span>}
           {contact?.name}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-72" align="start">
         <div className="grid gap-2 text-sm">
-          <div className="font-semibold">{contact?.name}</div>
+          <div className="flex items-center justify-between gap-2 font-semibold">
+            <span>{contact?.name}</span>
+            {booking.status === "tentative" && (
+              <span className="rounded bg-yellow-400 px-1.5 py-0.5 text-xs font-medium text-yellow-950">
+                {t("booking.status.tentative")}
+              </span>
+            )}
+          </div>
           <div className="text-muted-foreground" dir="ltr">
             {booking.checkIn} → {booking.checkOut}
           </div>
@@ -247,17 +273,26 @@ function BookingBar({
             </span>
           </div>
           <div>
-            {booking.rooms.map((br) => (
-              <div key={br.roomId} className="flex justify-between">
-                <span>{rooms.find((r) => r.id === br.roomId)?.name ?? br.roomId}</span>
-                <span className="tabular-nums">{br.price.toLocaleString()}</span>
+            {isEntireProperty(booking.rooms.map((br) => br.roomId), rooms) ? (
+              <div className="flex justify-between font-medium">
+                <span>{t("booking.entireProperty")}</span>
+                <span className="tabular-nums">{formatMoney(bookingTotal(booking.rooms))}</span>
               </div>
-            ))}
-            {booking.rooms.length > 1 && (
-              <div className="mt-1 flex justify-between border-t pt-1 font-medium">
-                <span>{t("booking.summary.total")}</span>
-                <span className="tabular-nums">{bookingTotal(booking.rooms).toLocaleString()}</span>
-              </div>
+            ) : (
+              <>
+                {booking.rooms.map((br) => (
+                  <div key={br.roomId} className="flex justify-between">
+                    <span>{rooms.find((r) => r.id === br.roomId)?.name ?? br.roomId}</span>
+                    <span className="tabular-nums">{formatMoney(br.price)}</span>
+                  </div>
+                ))}
+                {booking.rooms.length > 1 && (
+                  <div className="mt-1 flex justify-between border-t pt-1 font-medium">
+                    <span>{t("booking.summary.total")}</span>
+                    <span className="tabular-nums">{formatMoney(bookingTotal(booking.rooms))}</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
           {contact?.phone && (
@@ -286,6 +321,15 @@ function BookingBar({
             </div>
           )}
           <Separator />
+          {booking.status === "tentative" && (
+            <Button
+              size="sm"
+              className="w-full bg-emerald-600 text-white hover:bg-emerald-600/90"
+              onClick={handleApprove}
+            >
+              <CheckCircle2 className="size-3.5" /> {t("booking.approve")}
+            </Button>
+          )}
           <div className="flex gap-2">
             <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(booking)}>
               <Pencil className="size-3.5" /> {t("booking.edit")}

@@ -1,11 +1,12 @@
-import { getContainer } from "@/lib/container";
+import { getTenantContainer } from "@/lib/container";
+import { requireTenant } from "@/lib/auth/tenant";
 import { BookingDialogProvider } from "@/components/booking/booking-dialog";
 import { AppNav } from "@/components/app-nav";
 
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const rooms = await getContainer().roomService.listRooms();
+  const rooms = await getTenantContainer(await requireTenant()).roomService.listRooms();
 
   return (
     <BookingDialogProvider rooms={rooms}>

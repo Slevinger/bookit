@@ -24,7 +24,7 @@ export function layoutRoomBars(
   return bookings
     .filter(
       (b) =>
-        b.status === "confirmed" &&
+        b.status !== "cancelled" &&
         b.rooms.some((r) => r.roomId === roomId) &&
         rangesOverlap(b.checkIn, b.checkOut, from, to),
     )

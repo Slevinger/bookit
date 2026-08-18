@@ -43,7 +43,7 @@ export const bookingDraftSchema = z
         }),
       )
       .default([]),
-    status: z.enum(["confirmed", "cancelled"]).optional(),
+    status: z.enum(["confirmed", "tentative", "cancelled"]).optional(),
     source: z.enum(["manual", "airbnb", "booking.com", "website"]).optional(),
   })
   .refine((d) => isValidRange(d.checkIn, d.checkOut), {
@@ -57,6 +57,18 @@ export const bookingTotal = (rooms: BookingRoom[]): number =>
   rooms.reduce((sum, r) => sum + r.price, 0);
 
 export const totalGuests = (guests: Guests): number => guests.adults + guests.children;
+
+/**
+ * A booking covers the whole facility when it holds every active room (only
+ * meaningful for multi-room properties). Used to present the booking as a
+ * single "entire property" unit with one unified price instead of per-room lines.
+ */
+export const isEntireProperty = (bookingRoomIds: string[], rooms: Room[]): boolean => {
+  const active = rooms.filter((r) => r.isActive);
+  if (active.length < 2) return false;
+  const booked = new Set(bookingRoomIds);
+  return active.every((r) => booked.has(r.id));
+};
 
 export const BED_SHORTFALL_CODE = "bed-shortfall";
 

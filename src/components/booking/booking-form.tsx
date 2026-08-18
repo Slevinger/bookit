@@ -7,9 +7,11 @@ import {
   bedShortfallNote,
   bookingDraftSchema,
   bookingTotal,
+  isEntireProperty,
   totalGuests,
 } from "@/lib/domain/booking";
 import { addDays, isISODate, isValidRange, nightsBetween } from "@/lib/domain/dates";
+import { formatMoney } from "@/lib/format";
 import type { Booking, BookingDraft, Contact, ISODate, Room, RoomAvailability } from "@/lib/domain/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,10 +74,21 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
   const [priceOverrides, setPriceOverrides] = useState<Map<string, number>>(
     () => new Map(editing ? editing.rooms.map((r) => [r.roomId, r.price]) : []),
   );
+  // A single agreed price used when the whole property is booked; null means
+  // "derive from the rooms' nightly rates". Seeded from an edited whole-property
+  // booking's existing total.
+  const [propertyPriceOverride, setPropertyPriceOverride] = useState<number | null>(() =>
+    editing && isEntireProperty(editing.rooms.map((r) => r.roomId), rooms)
+      ? bookingTotal(editing.rooms)
+      : null,
+  );
   const [availabilityResponse, setAvailabilityResponse] = useState<{
     key: string;
     data: RoomAvailability[];
   } | null>(null);
+  // Tentative = the guest is interested but hasn't closed the deal. Such holds
+  // are shown in yellow and never block dates, so they can overlap other stays.
+  const [tentative, setTentative] = useState(editing?.status === "tentative");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -129,11 +142,29 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
     [availability],
   );
 
+  const activeRooms = useMemo(() => rooms.filter((r) => r.isActive), [rooms]);
+  const entire = isEntireProperty([...selectedIds], rooms);
+  const entireDefault = useMemo(
+    () => activeRooms.reduce((sum, room) => sum + defaultPrice(room), 0),
+    [activeRooms, defaultPrice],
+  );
+  const propertyPrice = propertyPriceOverride ?? entireDefault;
+
   const selectedRooms = useMemo(
     () => [...selectedIds].map((roomId) => ({ roomId, price: priceFor(roomId) })),
     [selectedIds, priceFor],
   );
-  const total = bookingTotal(selectedRooms);
+  // When the whole property is booked, the agreed price is a single figure; it
+  // is stored on the first room (0 on the rest) so the total is preserved while
+  // per-room pricing stays meaningful for partial bookings.
+  const finalRooms = useMemo(
+    () =>
+      entire
+        ? [...selectedIds].map((roomId, i) => ({ roomId, price: i === 0 ? propertyPrice : 0 }))
+        : selectedRooms,
+    [entire, selectedIds, propertyPrice, selectedRooms],
+  );
+  const total = entire ? propertyPrice : bookingTotal(selectedRooms);
   const unavailableSelected = selectedRooms
     .map((r) => availabilityByRoom.get(r.roomId))
     .filter((a): a is RoomAvailability => !!a && !a.available);
@@ -165,6 +196,14 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
     setPriceOverrides((prev) => new Map(prev).set(roomId, value));
   }
 
+  // One tap to book (or release) the whole facility.
+  function toggleEntire() {
+    setPropertyPriceOverride(null);
+    setSelectedIds((prev) =>
+      isEntireProperty([...prev], rooms) ? new Set() : new Set(activeRooms.map((r) => r.id)),
+    );
+  }
+
   function updateContact(key: number, patch: Partial<Contact>) {
     setContacts((prev) => prev.map((c) => (c.key === key ? { ...c, ...patch } : c)));
   }
@@ -173,7 +212,7 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
     const draft: BookingDraft = {
       checkIn,
       checkOut,
-      rooms: selectedRooms,
+      rooms: finalRooms,
       guests: { adults, children },
       contacts: contacts.map(({ name, phone, email, notes: contactNotes }) => ({
         name,
@@ -185,6 +224,9 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
         ...preservedNotes,
         ...(notes.trim() ? [{ type: "info" as const, text: notes.trim() }] : []),
       ],
+      // Keep cancelled bookings cancelled; otherwise reflect the tentative toggle.
+      status:
+        editing?.status === "cancelled" ? "cancelled" : tentative ? "tentative" : "confirmed",
     };
     const parsed = bookingDraftSchema.safeParse(draft);
     if (!parsed.success) {
@@ -261,17 +303,29 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
       title: t("booking.step.rooms"),
       validate: () => {
         if (selectedRooms.length === 0) return t("booking.error.noRooms");
-        if (unavailableSelected.length > 0) {
-          return t("booking.error.unavailable", {
-            rooms: unavailableSelected.map((a) => a.room.name).join(", "),
-          });
-        }
+        // The conflict message is already shown inline in the step content;
+        // block silently instead of doubling it. Tentative holds are allowed to
+        // overlap, so they don't block on unavailability.
+        if (!tentative && unavailableSelected.length > 0) return "";
         return null;
       },
       content: (
         <div className="grid gap-3">
+          {activeRooms.length >= 2 && (
+            <Button
+              type="button"
+              variant={entire ? "default" : "outline"}
+              size="lg"
+              aria-pressed={entire}
+              onClick={toggleEntire}
+              className="h-14 justify-between text-base"
+            >
+              <span className="font-semibold">{t("booking.entireProperty")}</span>
+              <span className="text-sm font-normal opacity-80">{t("booking.entirePropertyHint")}</span>
+            </Button>
+          )}
           <div className="flex flex-wrap gap-2.5">
-            {rooms.filter((r) => r.isActive).map((room) => {
+            {activeRooms.map((room) => {
               const selected = selectedIds.has(room.id);
               const roomAvailability = availabilityByRoom.get(room.id);
               const unavailable = roomAvailability ? !roomAvailability.available : false;
@@ -289,40 +343,66 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
               );
             })}
           </div>
-          {selectedRooms.length > 0 && (
+          {entire ? (
             <div className="grid gap-3 rounded-xl border p-4">
-              <p className="text-sm font-medium text-muted-foreground">
-                {t("booking.stayPrice", { nights: tn("booking.nightsCount", nights) })}
-              </p>
-              {selectedRooms.map(({ roomId, price }) => {
-                const room = rooms.find((r) => r.id === roomId);
-                return (
-                  <div key={roomId} className="flex items-center gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-base">{roomName(roomId)}</p>
-                      {room && nights > 0 && (
-                        <p className="text-sm text-muted-foreground">
-                          {t("booking.perNight", { price: room.basePrice.toLocaleString(), nights })}
-                        </p>
-                      )}
-                    </div>
-                    <Input
-                      aria-label={t("booking.priceFor", { room: roomName(roomId) })}
-                      type="number"
-                      min={0}
-                      step="any"
-                      className="h-12 w-32 text-base"
-                      value={price}
-                      onChange={(e) => setPrice(roomId, Number(e.target.value))}
-                    />
-                  </div>
-                );
-              })}
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-base font-medium">{t("booking.entireProperty")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("booking.stayPrice", { nights: tn("booking.nightsCount", nights) })}
+                  </p>
+                </div>
+                <Input
+                  aria-label={t("booking.entirePropertyPrice")}
+                  type="number"
+                  min={0}
+                  step="any"
+                  className="h-12 w-32 text-base"
+                  value={propertyPrice}
+                  onChange={(e) => setPropertyPriceOverride(Number(e.target.value))}
+                />
+              </div>
               <div className="flex items-center justify-between border-t pt-3 text-base font-semibold">
                 <span>{t("booking.totalForStay")}</span>
-                <span data-testid="booking-total">{total.toLocaleString()}</span>
+                <span data-testid="booking-total">{formatMoney(total)}</span>
               </div>
             </div>
+          ) : (
+            selectedRooms.length > 0 && (
+              <div className="grid gap-3 rounded-xl border p-4">
+                <p className="text-sm font-medium text-muted-foreground">
+                  {t("booking.stayPrice", { nights: tn("booking.nightsCount", nights) })}
+                </p>
+                {selectedRooms.map(({ roomId, price }) => {
+                  const room = rooms.find((r) => r.id === roomId);
+                  return (
+                    <div key={roomId} className="flex items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-base">{roomName(roomId)}</p>
+                        {room && nights > 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            {t("booking.perNight", { price: formatMoney(room.basePrice), nights })}
+                          </p>
+                        )}
+                      </div>
+                      <Input
+                        aria-label={t("booking.priceFor", { room: roomName(roomId) })}
+                        type="number"
+                        min={0}
+                        step="any"
+                        className="h-12 w-32 text-base"
+                        value={price}
+                        onChange={(e) => setPrice(roomId, Number(e.target.value))}
+                      />
+                    </div>
+                  );
+                })}
+                <div className="flex items-center justify-between border-t pt-3 text-base font-semibold">
+                  <span>{t("booking.totalForStay")}</span>
+                  <span data-testid="booking-total">{formatMoney(total)}</span>
+                </div>
+              </div>
+            )
           )}
           {unavailableSelected.length > 0 && (
             <p className="text-base font-medium text-destructive">
@@ -444,9 +524,13 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
           />
           <SummaryRow
             label={t("booking.summary.rooms")}
-            value={selectedRooms.map((r) => `${roomName(r.roomId)} — ${r.price.toLocaleString()}`).join(", ")}
+            value={
+              entire
+                ? `${t("booking.entireProperty")} — ${formatMoney(propertyPrice)}`
+                : selectedRooms.map((r) => `${roomName(r.roomId)} — ${formatMoney(r.price)}`).join(", ")
+            }
           />
-          <SummaryRow label={t("booking.summary.total")} value={total.toLocaleString()} strong />
+          <SummaryRow label={t("booking.summary.total")} value={formatMoney(total)} strong />
           <SummaryRow
             label={t("booking.summary.contact")}
             value={`${contacts[0]?.name ?? ""} · ${contacts[0]?.phone ?? ""}`}
@@ -457,6 +541,25 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
               {noteText(bedWarning)} {t("booking.bedWarningNote")}
             </p>
           )}
+          <div className="flex items-center justify-between gap-3 rounded-lg border px-4 py-3">
+            <div className="grid gap-0.5">
+              <span className="font-medium">{t("booking.tentativeLabel")}</span>
+              <span className="text-sm text-muted-foreground">{t("booking.tentativeHint")}</span>
+            </div>
+            <Button
+              type="button"
+              variant={tentative ? "default" : "outline"}
+              size="lg"
+              aria-pressed={tentative}
+              className={cn(
+                "shrink-0",
+                tentative && "bg-yellow-400 text-yellow-950 hover:bg-yellow-400/90",
+              )}
+              onClick={() => setTentative((v) => !v)}
+            >
+              {tentative ? t("booking.status.tentative") : t("booking.status.confirmed")}
+            </Button>
+          </div>
           {submitError && (
             <p role="alert" className="font-medium text-destructive">
               {submitError}

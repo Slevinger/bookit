@@ -2,7 +2,7 @@
 export type ISODate = string;
 export type DateString = ISODate;
 
-export type BookingStatus = "confirmed" | "cancelled";
+export type BookingStatus = "confirmed" | "tentative" | "cancelled";
 export type BookingSource = "manual" | "airbnb" | "booking.com" | "website";
 
 export interface Beds {
@@ -73,8 +73,13 @@ export type BookingDraft = Omit<Booking, "id" | "createdAt" | "status" | "source
 export interface RoomAvailability {
   room: Room;
   available: boolean;
-  /** Confirmed bookings overlapping the queried range, for timeline rendering. */
+  /** Confirmed bookings overlapping the queried range — these block the room. */
   conflicts: Booking[];
+  /**
+   * All non-cancelled bookings overlapping the queried range (confirmed +
+   * tentative), for timeline rendering. Tentative ones don't affect `available`.
+   */
+  overlapping: Booking[];
 }
 
 export interface Settings {

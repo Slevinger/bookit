@@ -1,4 +1,4 @@
-import type { Firestore, Transaction } from "firebase-admin/firestore";
+import type { CollectionReference, Transaction } from "firebase-admin/firestore";
 import type { Booking, Room } from "@/lib/domain/types";
 import { findConflicts } from "@/lib/domain/availability";
 import {
@@ -7,9 +7,6 @@ import {
   type BookingRepository,
   type RoomRepository,
 } from "./types";
-
-const ROOMS = "rooms";
-const BOOKINGS = "bookings";
 
 type RoomData = Omit<Room, "id">;
 type BookingData = Omit<Booking, "id">;
@@ -23,23 +20,24 @@ const migrateRoom = (data: RoomData & { capacity?: number }): RoomData => {
   return { ...data, beds: { double: Math.floor(capacity / 2), single: capacity % 2 } };
 };
 
-export const createFirestoreRoomRepository = (db: Firestore): RoomRepository => ({
+/** `rooms` is the tenant-scoped collection (`tenants/{tenantId}/rooms`). */
+export const createFirestoreRoomRepository = (rooms: CollectionReference): RoomRepository => ({
   async list() {
-    const snap = await db.collection(ROOMS).get();
+    const snap = await rooms.get();
     return snap.docs
       .map((d) => withId(d.id, migrateRoom(d.data() as RoomData)))
       .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
   },
   async get(id) {
-    const doc = await db.collection(ROOMS).doc(id).get();
+    const doc = await rooms.doc(id).get();
     return doc.exists ? withId(doc.id, migrateRoom(doc.data() as RoomData)) : null;
   },
   async create(room) {
-    const ref = await db.collection(ROOMS).add(room);
+    const ref = await rooms.add(room);
     return withId(ref.id, room);
   },
   async update(id, patch) {
-    const ref = db.collection(ROOMS).doc(id);
+    const ref = rooms.doc(id);
     const doc = await ref.get();
     if (!doc.exists) throw new NotFoundError("Room", id);
     await ref.update(patch);
@@ -55,14 +53,14 @@ export const createFirestoreRoomRepository = (db: Firestore): RoomRepository => 
  * concurrent conflicting writes cannot both commit.
  */
 const assertNoConflictsTx = async (
-  db: Firestore,
+  bookings: CollectionReference,
   tx: Transaction,
   booking: Pick<Booking, "rooms" | "checkIn" | "checkOut">,
   excludeBookingId?: string,
 ) => {
   // Single-field range query only (a status+checkOut filter would require a
   // composite Firestore index); findConflicts ignores cancelled bookings.
-  const snap = await tx.get(db.collection(BOOKINGS).where("checkOut", ">", booking.checkIn));
+  const snap = await tx.get(bookings.where("checkOut", ">", booking.checkIn));
   const candidates = snap.docs.map((d) => withId(d.id, d.data() as BookingData));
   const conflicting = booking.rooms
     .map((r) => r.roomId)
@@ -82,45 +80,52 @@ const migrateBooking = (data: BookingData & { notes?: BookingData["notes"] | str
   return { ...data, notes: data.notes ?? [] };
 };
 
-export const createFirestoreBookingRepository = (db: Firestore): BookingRepository => ({
-  async list() {
-    const snap = await db.collection(BOOKINGS).orderBy("checkIn", "desc").get();
-    return snap.docs.map((d) => withId(d.id, migrateBooking(d.data() as BookingData)));
-  },
-  async get(id) {
-    const doc = await db.collection(BOOKINGS).doc(id).get();
-    return doc.exists ? withId(doc.id, migrateBooking(doc.data() as BookingData)) : null;
-  },
-  async listOverlapping(from, to) {
-    const snap = await db.collection(BOOKINGS).where("checkOut", ">", from).get();
-    return snap.docs
-      .map((d) => withId(d.id, migrateBooking(d.data() as BookingData)))
-      .filter((b) => b.checkIn < to);
-  },
-  async createChecked(booking) {
-    return db.runTransaction(async (tx) => {
-      await assertNoConflictsTx(db, tx, booking);
-      const ref = db.collection(BOOKINGS).doc();
-      tx.set(ref, booking);
-      return withId(ref.id, booking);
-    });
-  },
-  async update(id, patch) {
-    const ref = db.collection(BOOKINGS).doc(id);
-    const doc = await ref.get();
-    if (!doc.exists) throw new NotFoundError("Booking", id);
-    await ref.update(patch);
-    return withId(id, { ...(doc.data() as BookingData), ...patch });
-  },
-  async updateChecked(id, patch) {
-    return db.runTransaction(async (tx) => {
-      const ref = db.collection(BOOKINGS).doc(id);
-      const doc = await tx.get(ref);
+/** `bookings` is the tenant-scoped collection (`tenants/{tenantId}/bookings`). */
+export const createFirestoreBookingRepository = (
+  bookings: CollectionReference,
+): BookingRepository => {
+  const db = bookings.firestore;
+  return {
+    async list() {
+      const snap = await bookings.orderBy("checkIn", "desc").get();
+      return snap.docs.map((d) => withId(d.id, migrateBooking(d.data() as BookingData)));
+    },
+    async get(id) {
+      const doc = await bookings.doc(id).get();
+      return doc.exists ? withId(doc.id, migrateBooking(doc.data() as BookingData)) : null;
+    },
+    async listOverlapping(from, to) {
+      const snap = await bookings.where("checkOut", ">", from).get();
+      return snap.docs
+        .map((d) => withId(d.id, migrateBooking(d.data() as BookingData)))
+        .filter((b) => b.checkIn < to);
+    },
+    async createChecked(booking) {
+      return db.runTransaction(async (tx) => {
+        // Tentative bookings are only "interested" holds: they don't block dates.
+        if (booking.status === "confirmed") await assertNoConflictsTx(bookings, tx, booking);
+        const ref = bookings.doc();
+        tx.set(ref, booking);
+        return withId(ref.id, booking);
+      });
+    },
+    async update(id, patch) {
+      const ref = bookings.doc(id);
+      const doc = await ref.get();
       if (!doc.exists) throw new NotFoundError("Booking", id);
-      const merged = { ...(doc.data() as BookingData), ...patch };
-      if (merged.status === "confirmed") await assertNoConflictsTx(db, tx, merged, id);
-      tx.update(ref, patch);
-      return withId(id, merged);
-    });
-  },
-});
+      await ref.update(patch);
+      return withId(id, { ...(doc.data() as BookingData), ...patch });
+    },
+    async updateChecked(id, patch) {
+      return db.runTransaction(async (tx) => {
+        const ref = bookings.doc(id);
+        const doc = await tx.get(ref);
+        if (!doc.exists) throw new NotFoundError("Booking", id);
+        const merged = { ...(doc.data() as BookingData), ...patch };
+        if (merged.status === "confirmed") await assertNoConflictsTx(bookings, tx, merged, id);
+        tx.update(ref, patch);
+        return withId(id, merged);
+      });
+    },
+  };
+};

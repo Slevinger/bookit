@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
-import { getContainer } from "@/lib/container";
+import { getTenantContainer } from "@/lib/container";
+import { requireTenant } from "@/lib/auth/tenant";
 import { eachDateInRange, monthWindow, todayISO } from "@/lib/domain/dates";
 import type { Booking, ISODate, Room } from "@/lib/domain/types";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, type Locale } from "@/lib/i18n/dictionaries";
@@ -24,7 +25,7 @@ export default async function PrintMonthPage({ params }: { params: Promise<{ mon
   const locale: Locale = cookieLocale === "en" ? "en" : DEFAULT_LOCALE;
   const { t, dateLocale } = createTranslator(locale);
 
-  const { bookingService, roomService } = getContainer();
+  const { bookingService, roomService } = getTenantContainer(await requireTenant());
   const [allRooms, bookings] = await Promise.all([
     roomService.listRooms(),
     bookingService.listBookingsOverlapping(window.from, window.to),
@@ -83,14 +84,24 @@ export default async function PrintMonthPage({ params }: { params: Promise<{ mon
                   const booking = bookingFor(bookings, room.id, day);
                   const contact = booking?.contacts[0];
                   const isCheckIn = booking?.checkIn === day;
+                  const isTentative = booking?.status === "tentative";
                   return (
                     <td
                       key={room.id}
-                      className={`border border-neutral-400 px-2 py-1 text-center ${booking ? "bg-neutral-200" : ""}`}
+                      className={
+                        isTentative
+                          ? "border-2 border-dashed border-yellow-500 bg-yellow-100 px-2 py-1 text-center"
+                          : `border border-neutral-400 px-2 py-1 text-center ${booking ? "bg-neutral-200" : ""}`
+                      }
                     >
                       {booking && (
                         <span className={isCheckIn ? "font-semibold" : undefined}>
                           {contact?.name}
+                          {isTentative && (
+                            <span className="block text-xs font-normal italic text-yellow-700">
+                              {t("print.tentativeNote")}
+                            </span>
+                          )}
                           {isCheckIn && contact?.phone && (
                             <span className="block text-xs text-neutral-600" dir="ltr">
                               {contact.phone}

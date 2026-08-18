@@ -61,13 +61,18 @@ const en = {
   "booking.bedWarningNote": "A note will be added to the booking.",
   "booking.created": "Booking created",
   "booking.updated": "Booking updated",
+  "booking.confirmed": "Booking approved",
   "booking.cancelled": "Booking cancelled",
+  "booking.approve": "Approve",
   "booking.cancelConfirm": "Cancel booking for {name}?",
   "booking.edit": "Edit",
   "booking.cancel": "Cancel",
   "booking.todo": "To do: ",
   "booking.status.confirmed": "Confirmed",
+  "booking.status.tentative": "Tentative",
   "booking.status.cancelled": "Cancelled",
+  "booking.tentativeLabel": "Booking status",
+  "booking.tentativeHint": "Tentative holds are shown in yellow and don't block the dates.",
 
   "notes.bedShortfall":
     "Not enough beds: {party} guests but the selected rooms sleep only {sleeps}. This is not ideal — find a good solution (extra bed, different room, or adjust the party).",
@@ -153,13 +158,15 @@ const en = {
   "list.editAria": "Edit booking",
 
   "login.title": "Bookit",
-  "login.password": "Password",
-  "login.signIn": "Sign in",
-  "login.signingIn": "Signing in...",
+  "login.tagline": "Manage your B&B rooms, bookings and availability.",
+  "login.google": "Sign in with Google",
 
   "stepper.increase": "Increase {label}",
   "stepper.decrease": "Decrease {label}",
   "booking.priceFor": "Price for {room}",
+  "booking.entireProperty": "Entire property",
+  "booking.entirePropertyHint": "All rooms, one price",
+  "booking.entirePropertyPrice": "Price for the entire property",
 
   "print.export": "Print / export",
   "print.title": "Rooms sheet — {month}",
@@ -169,6 +176,7 @@ const en = {
   "print.emailIntro": "Bookings for {month}:",
   "print.noBookings": "No bookings this month.",
   "print.date": "Date",
+  "print.tentativeNote": "Tentative — not confirmed",
   "print.backToCalendar": "Back to calendar",
   "print.emailHint": "Tip: use Print and save as PDF to attach the sheet to an email.",
 
@@ -236,13 +244,18 @@ const he: Record<TranslationKey, string> = {
   "booking.bedWarningNote": "תתווסף הערה להזמנה.",
   "booking.created": "ההזמנה נוצרה",
   "booking.updated": "ההזמנה עודכנה",
+  "booking.confirmed": "ההזמנה אושרה",
   "booking.cancelled": "ההזמנה בוטלה",
+  "booking.approve": "אישור",
   "booking.cancelConfirm": "לבטל את ההזמנה של {name}?",
   "booking.edit": "עריכה",
   "booking.cancel": "ביטול",
   "booking.todo": "לטיפול: ",
   "booking.status.confirmed": "מאושרת",
+  "booking.status.tentative": "בהמתנה",
   "booking.status.cancelled": "מבוטלת",
+  "booking.tentativeLabel": "סטטוס הזמנה",
+  "booking.tentativeHint": "הזמנות בהמתנה מוצגות בצהוב ואינן חוסמות את התאריכים.",
 
   "notes.bedShortfall":
     "אין מספיק מיטות: {party} אורחים אבל בחדרים שנבחרו יש מקום ל-{sleeps} בלבד. זה לא אידיאלי — צריך למצוא פתרון טוב (מיטה נוספת, חדר אחר, או התאמת מספר האורחים).",
@@ -328,13 +341,15 @@ const he: Record<TranslationKey, string> = {
   "list.editAria": "עריכת הזמנה",
 
   "login.title": "Bookit",
-  "login.password": "סיסמה",
-  "login.signIn": "כניסה",
-  "login.signingIn": "מתחבר...",
+  "login.tagline": "ניהול חדרים, הזמנות וזמינות של הצימר שלך.",
+  "login.google": "התחברות עם Google",
 
   "stepper.increase": "הגדלת {label}",
   "stepper.decrease": "הקטנת {label}",
   "booking.priceFor": "מחיר עבור {room}",
+  "booking.entireProperty": "כל הנכס",
+  "booking.entirePropertyHint": "כל החדרים, מחיר אחד",
+  "booking.entirePropertyPrice": "מחיר לכל הנכס",
 
   "print.export": "הדפסה / ייצוא",
   "print.title": "לוח חדרים — {month}",
@@ -344,6 +359,7 @@ const he: Record<TranslationKey, string> = {
   "print.emailIntro": "הזמנות לחודש {month}:",
   "print.noBookings": "אין הזמנות בחודש זה.",
   "print.date": "תאריך",
+  "print.tentativeNote": "בהמתנה — לא מאושרת",
   "print.backToCalendar": "חזרה ללוח",
   "print.emailHint": "טיפ: לחצו הדפסה ושמרו כ-PDF כדי לצרף את הגיליון למייל.",
 

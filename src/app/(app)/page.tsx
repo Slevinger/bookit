@@ -1,4 +1,5 @@
-import { getContainer } from "@/lib/container";
+import { getTenantContainer } from "@/lib/container";
+import { requireTenant } from "@/lib/auth/tenant";
 import { addDays, monthWindow } from "@/lib/domain/dates";
 import { CalendarView } from "@/components/calendar/calendar-view";
 
@@ -11,7 +12,7 @@ export default async function CalendarPage({
 }) {
   const { month } = await searchParams;
   const window = monthWindow(month);
-  const { bookingService, roomService } = getContainer();
+  const { bookingService, roomService } = getTenantContainer(await requireTenant());
 
   const [rooms, bookings] = await Promise.all([
     roomService.listRooms(),

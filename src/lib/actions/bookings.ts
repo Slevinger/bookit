@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
-import { getContainer } from "@/lib/container";
+import { getTenantContainer } from "@/lib/container";
+import { requireTenant } from "@/lib/auth/tenant";
 import { BookingConflictError } from "@/lib/repositories/types";
 import type { Booking, BookingDraft, ISODate, RoomAvailability } from "@/lib/domain/types";
 
@@ -25,7 +26,8 @@ function revalidateAll() {
 
 export async function createBookingAction(draft: BookingDraft): Promise<ActionResult<Booking>> {
   try {
-    const booking = await getContainer().bookingService.createBooking(draft);
+    const { bookingService } = getTenantContainer(await requireTenant());
+    const booking = await bookingService.createBooking(draft);
     revalidateAll();
     return { ok: true, data: booking };
   } catch (error) {
@@ -38,7 +40,19 @@ export async function updateBookingAction(
   draft: BookingDraft,
 ): Promise<ActionResult<Booking>> {
   try {
-    const booking = await getContainer().bookingService.updateBooking(id, draft);
+    const { bookingService } = getTenantContainer(await requireTenant());
+    const booking = await bookingService.updateBooking(id, draft);
+    revalidateAll();
+    return { ok: true, data: booking };
+  } catch (error) {
+    return { ok: false, error: toError(error) };
+  }
+}
+
+export async function confirmBookingAction(id: string): Promise<ActionResult<Booking>> {
+  try {
+    const { bookingService } = getTenantContainer(await requireTenant());
+    const booking = await bookingService.confirmBooking(id);
     revalidateAll();
     return { ok: true, data: booking };
   } catch (error) {
@@ -48,7 +62,8 @@ export async function updateBookingAction(
 
 export async function cancelBookingAction(id: string): Promise<ActionResult<Booking>> {
   try {
-    const booking = await getContainer().bookingService.cancelBooking(id);
+    const { bookingService } = getTenantContainer(await requireTenant());
+    const booking = await bookingService.cancelBooking(id);
     revalidateAll();
     return { ok: true, data: booking };
   } catch (error) {
@@ -62,11 +77,8 @@ export async function checkAvailabilityAction(
   excludeBookingId?: string,
 ): Promise<ActionResult<RoomAvailability[]>> {
   try {
-    const result = await getContainer().bookingService.checkAvailability(
-      checkIn,
-      checkOut,
-      excludeBookingId,
-    );
+    const { bookingService } = getTenantContainer(await requireTenant());
+    const result = await bookingService.checkAvailability(checkIn, checkOut, excludeBookingId);
     return { ok: true, data: result };
   } catch (error) {
     return { ok: false, error: toError(error) };

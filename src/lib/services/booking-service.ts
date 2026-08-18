@@ -14,6 +14,7 @@ export interface BookingServiceDeps {
 export interface BookingService {
   createBooking(draft: BookingDraft): Promise<Booking>;
   updateBooking(id: string, draft: BookingDraft): Promise<Booking>;
+  confirmBooking(id: string): Promise<Booking>;
   cancelBooking(id: string): Promise<Booking>;
   checkAvailability(
     checkIn: ISODate,
@@ -64,6 +65,15 @@ export const createBookingService = ({
       await emitter.emit("booking.updated", { booking, previous });
       return booking;
     },
+
+  async confirmBooking(id) {
+    const previous = await bookingRepo.get(id);
+    if (!previous) throw new NotFoundError("Booking", id);
+    // updateChecked runs the conflict check because the status becomes confirmed.
+    const booking = await bookingRepo.updateChecked(id, { status: "confirmed" });
+    await emitter.emit("booking.updated", { booking, previous });
+    return booking;
+  },
 
   async cancelBooking(id) {
     const booking = await bookingRepo.update(id, { status: "cancelled" });

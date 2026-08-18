@@ -52,8 +52,8 @@ export function AvailabilityTimeline({ result, checkIn, checkOut, onBook }: Avai
         ))}
       </div>
 
-      {result.map(({ room, available, conflicts }) => {
-        const bars = layoutRoomBars(conflicts, room.id, from, to);
+      {result.map(({ room, available, overlapping }) => {
+        const bars = layoutRoomBars(overlapping, room.id, from, to);
         return (
           <div key={room.id} data-testid={`row-${room.id}`} data-available={available} className="grid gap-1.5">
             {/* Room header follows the app's reading direction */}
@@ -95,7 +95,12 @@ export function AvailabilityTimeline({ result, checkIn, checkOut, onBook }: Avai
                   key={bar.booking.id}
                   data-testid={`conflict-${bar.booking.id}-${room.id}`}
                   title={`${bar.booking.contacts[0]?.name ?? ""} ${bar.booking.checkIn} → ${bar.booking.checkOut}`}
-                  className="absolute inset-y-1.5 z-10 flex items-center truncate rounded bg-foreground/75 px-1.5 text-xs font-medium text-background"
+                  className={cn(
+                    "absolute inset-y-1.5 z-10 flex items-center truncate rounded px-1.5 text-xs font-medium",
+                    bar.booking.status === "tentative"
+                      ? "border-2 border-dashed border-yellow-500 bg-yellow-400/30 text-yellow-900 dark:text-yellow-100"
+                      : "bg-foreground/75 text-background",
+                  )}
                   style={{
                     left: `${(bar.startIndex / days.length) * 100}%`,
                     width: `${(bar.span / days.length) * 100}%`,

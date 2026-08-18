@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { BookingForm } from "./booking-form";
-import type { Room, RoomAvailability } from "@/lib/domain/types";
+import type { Booking, Room, RoomAvailability } from "@/lib/domain/types";
 
 const rooms: Room[] = [
   { id: "r1", name: "Garden", description: "", beds: { double: 1, single: 0 }, basePrice: 350, isActive: true, sortOrder: 0, externalRefs: {} },
@@ -10,7 +10,7 @@ const rooms: Room[] = [
 ];
 
 const allAvailable = async (): Promise<RoomAvailability[]> =>
-  rooms.map((room) => ({ room, available: true, conflicts: [] }));
+  rooms.map((room) => ({ room, available: true, conflicts: [], overlapping: [] }));
 
 function setup(overrides: Partial<React.ComponentProps<typeof BookingForm>> = {}) {
   const onSubmit = vi.fn().mockResolvedValue({ ok: true });
@@ -131,25 +131,21 @@ describe("BookingForm wizard", () => {
 
   it("shows a conflict warning when a selected room is unavailable", async () => {
     const user = userEvent.setup();
+    const blocker: Booking = {
+      id: "bX",
+      rooms: [{ roomId: "r1", price: 100 }],
+      guests: { adults: 2, children: 0 },
+      contacts: [{ name: "Someone", phone: "052" }],
+      checkIn: "2026-08-09",
+      checkOut: "2026-08-11",
+      status: "confirmed",
+      notes: [],
+      source: "manual",
+      createdAt: "",
+    };
     const conflicted = async (): Promise<RoomAvailability[]> => [
-      {
-        room: rooms[0],
-        available: false,
-        conflicts: [
-          {
-            id: "bX",
-            rooms: [{ roomId: "r1", price: 100 }],
-            guests: { adults: 2, children: 0 },
-            contacts: [{ name: "Someone", phone: "052" }],
-            checkIn: "2026-08-09",
-            checkOut: "2026-08-11",
-            status: "confirmed",            notes: [],
-            source: "manual",
-            createdAt: "",
-          },
-        ],
-      },
-      { room: rooms[1], available: true, conflicts: [] },
+      { room: rooms[0], available: false, conflicts: [blocker], overlapping: [blocker] },
+      { room: rooms[1], available: true, conflicts: [], overlapping: [] },
     ];
     setup({ checkAvailability: conflicted });
     await goToRoomsStep(user);
