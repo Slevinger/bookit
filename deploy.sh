@@ -9,9 +9,8 @@ PROJECT_ID="${GCP_PROJECT_ID:-bookit-505917}"
 REGION="${GCP_REGION:-europe-west1}"
 SERVICE="bookit"
 
-: "${APP_PASSWORD:?Set APP_PASSWORD env var before deploying}"
-: "${SESSION_SECRET:?Set SESSION_SECRET env var before deploying (e.g. openssl rand -hex 32)}"
-
+# Runtime secrets come from Google Secret Manager; sync them first with:
+#   ./scripts/sync-env-to-gsm.sh
 gcloud run deploy "$SERVICE" \
   --source . \
   --project "$PROJECT_ID" \
@@ -20,7 +19,7 @@ gcloud run deploy "$SERVICE" \
   --min-instances 0 \
   --max-instances 2 \
   --memory 512Mi \
-  --set-env-vars "APP_PASSWORD=${APP_PASSWORD},SESSION_SECRET=${SESSION_SECRET}"
+  --set-secrets "APP_PASSWORD=APP_PASSWORD:latest,SESSION_SECRET=SESSION_SECRET:latest"
 
 echo "Deployed. URL:"
 gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format 'value(status.url)'
