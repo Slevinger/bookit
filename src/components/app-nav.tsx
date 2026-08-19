@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BedDouble, CalendarDays, Languages, ListChecks, LogOut, Plus, Search } from "lucide-react";
+import { BedDouble, CalendarDays, Languages, ListChecks, LogOut, Plus, Search, Settings } from "lucide-react";
 import { logout } from "@/lib/auth/actions";
 import type { Room } from "@/lib/domain/types";
 import { useBookingDialog } from "@/components/booking/booking-dialog";
@@ -74,6 +74,20 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
             >
               <Languages className="size-5" />
               <span className="text-sm font-semibold">{t("nav.language")}</span>
+            </Button>
+            <Button
+              asChild
+              variant="ghost"
+              size="icon-lg"
+              aria-label={t("nav.settings")}
+              className={cn(
+                "text-muted-foreground",
+                pathname === "/settings" && "text-foreground",
+              )}
+            >
+              <Link href="/settings">
+                <Settings className="size-5" />
+              </Link>
             </Button>
             <Button
               variant="ghost"

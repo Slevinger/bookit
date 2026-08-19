@@ -1,6 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { getDb } from "@/lib/firestore/client";
+import { saveRefreshToken } from "@/lib/google/token-store";
 import { auth } from "./auth";
 
 const TENANTS = "tenants";
@@ -44,5 +45,13 @@ export const requireTenant = async (): Promise<string> => {
   const tenantId = session?.user?.tenantId;
   if (!tenantId) redirect("/login");
   await ensureTenant(tenantId, session.user);
+  // The refresh token only rides on the session right after Google consent.
+  // Persist it (Node-only, keeps `config.ts` edge-safe) so background calendar
+  // sync can mint access tokens later without the user being present.
+  if (session.refreshToken) {
+    await saveRefreshToken(tenantId, session.refreshToken).catch((error) => {
+      console.error("[tenant] failed to persist Google refresh token:", error);
+    });
+  }
   return tenantId;
 };

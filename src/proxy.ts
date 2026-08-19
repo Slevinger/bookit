@@ -8,6 +8,9 @@ const { auth } = NextAuth(authConfig);
 export default auth;
 
 export const config = {
-  // Protect everything except the login page, the Auth.js endpoints, and assets.
-  matcher: ["/((?!login|api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|ico)).*)"],
+  // Protect everything except the login page, the public legal pages (needed for
+  // Google OAuth verification), the Auth.js endpoints, and assets.
+  matcher: [
+    "/((?!login|privacy|terms|api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|ico)).*)",
+  ],
 };

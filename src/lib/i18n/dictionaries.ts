@@ -12,6 +12,7 @@ const en = {
   "nav.newBooking": "New booking",
   "nav.new": "New",
   "nav.checkDates": "Check dates",
+  "nav.settings": "Settings",
   "nav.signOut": "Sign out",
   "nav.language": "עברית",
 
@@ -160,6 +161,21 @@ const en = {
   "login.title": "Bookit",
   "login.tagline": "Manage your B&B rooms, bookings and availability.",
   "login.google": "Sign in with Google",
+  "login.calendarNote": "Signing in also lets Bookit sync your bookings to your Google Calendar.",
+
+  "settings.title": "Settings",
+  "settings.calendar.title": "Google Calendar",
+  "settings.calendar.description":
+    "Sync your bookings to a dedicated \"BookIt Bookings\" calendar in your Google account.",
+  "settings.calendar.connected": "Connected",
+  "settings.calendar.disconnected": "Not connected",
+  "settings.calendar.connect": "Connect Google Calendar",
+  "settings.calendar.reconnect": "Reconnect",
+  "settings.calendar.syncAll": "Sync all bookings",
+  "settings.calendar.syncing": "Syncing...",
+  "settings.calendar.syncDone": "Synced {n} bookings to Google Calendar.",
+  "settings.calendar.notConnected": "Connect Google Calendar first.",
+  "settings.calendar.lastSync": "Last synced: {when}",
 
   "stepper.increase": "Increase {label}",
   "stepper.decrease": "Decrease {label}",
@@ -195,6 +211,7 @@ const he: Record<TranslationKey, string> = {
   "nav.newBooking": "הזמנה חדשה",
   "nav.new": "חדש",
   "nav.checkDates": "בדיקת תאריכים",
+  "nav.settings": "הגדרות",
   "nav.signOut": "התנתקות",
   "nav.language": "English",
 
@@ -343,6 +360,21 @@ const he: Record<TranslationKey, string> = {
   "login.title": "Bookit",
   "login.tagline": "ניהול חדרים, הזמנות וזמינות של הצימר שלך.",
   "login.google": "התחברות עם Google",
+  "login.calendarNote": "ההתחברות מאפשרת ל-Bookit לסנכרן את ההזמנות שלך ליומן Google.",
+
+  "settings.title": "הגדרות",
+  "settings.calendar.title": "יומן Google",
+  "settings.calendar.description":
+    'סנכרון ההזמנות שלך ליומן ייעודי בשם "BookIt Bookings" בחשבון Google שלך.',
+  "settings.calendar.connected": "מחובר",
+  "settings.calendar.disconnected": "לא מחובר",
+  "settings.calendar.connect": "חיבור ליומן Google",
+  "settings.calendar.reconnect": "חיבור מחדש",
+  "settings.calendar.syncAll": "סנכרון כל ההזמנות",
+  "settings.calendar.syncing": "מסנכרן...",
+  "settings.calendar.syncDone": "סונכרנו {n} הזמנות ליומן Google.",
+  "settings.calendar.notConnected": "יש לחבר קודם את יומן Google.",
+  "settings.calendar.lastSync": "סונכרן לאחרונה: {when}",
 
   "stepper.increase": "הגדלת {label}",
   "stepper.decrease": "הקטנת {label}",

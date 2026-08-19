@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
 
 /** Only same-origin absolute URLs or root-relative paths are honored. */
@@ -23,10 +24,19 @@ export default async function LoginPage({
   const redirectTo = safeRedirect(callbackUrl) ?? safeRedirect(from) ?? "/";
 
   return (
-    <main className="flex min-h-dvh items-center justify-center p-4">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 p-4">
       <Suspense>
         <LoginForm redirectTo={redirectTo} />
       </Suspense>
+      <nav className="text-center text-xs text-muted-foreground">
+        <Link className="underline" href="/privacy">
+          Privacy Policy
+        </Link>
+        <span className="px-2">·</span>
+        <Link className="underline" href="/terms">
+          Terms of Service
+        </Link>
+      </nav>
     </main>
   );
 }

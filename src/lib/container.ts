@@ -1,12 +1,13 @@
 import "server-only";
 import { getDb } from "@/lib/firestore/client";
-import { emitter } from "@/lib/events/emitter";
+import { createEmitter } from "@/lib/events/emitter";
 import {
   createFirestoreBookingRepository,
   createFirestoreRoomRepository,
 } from "@/lib/repositories/firestore";
 import { createBookingService, type BookingService } from "@/lib/services/booking-service";
 import { createRoomService, type RoomService } from "@/lib/services/room-service";
+import { registerCalendarSync } from "@/lib/google/sync-subscriber";
 
 interface Container {
   bookingService: BookingService;
@@ -32,6 +33,10 @@ export function getTenantContainer(tenantId: string): Container {
   const tenantDoc = db.collection(TENANTS).doc(tenantId);
   const bookingRepo = createFirestoreBookingRepository(tenantDoc.collection(BOOKINGS));
   const roomRepo = createFirestoreRoomRepository(tenantDoc.collection(ROOMS));
+  // A per-tenant emitter keeps sync handlers scoped to this tenant's data, so a
+  // booking event never fans out to another tenant's Google Calendar.
+  const emitter = createEmitter();
+  registerCalendarSync({ tenantId, emitter, roomRepo });
   const container: Container = {
     bookingService: createBookingService({ bookingRepo, roomRepo, emitter }),
     roomService: createRoomService({ roomRepo }),
