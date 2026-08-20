@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/auth";
@@ -19,7 +20,15 @@ export default async function HomePage() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 p-4">
       <header className="max-w-md space-y-3 text-center">
-        <h1 className="text-3xl font-bold">BookIt</h1>
+        <Image
+          src="/logo.png"
+          alt="BookIt"
+          width={128}
+          height={128}
+          priority
+          className="mx-auto size-32 object-contain"
+        />
+        <h1 className="sr-only">BookIt</h1>
         <p className="text-sm text-muted-foreground">
           BookIt is a booking management app for bed &amp; breakfasts,
           guesthouses and vacation rentals. Owners manage rooms, reservations

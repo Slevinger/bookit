@@ -14,6 +14,7 @@ const hebrew = Noto_Sans_Hebrew({ subsets: ["hebrew"], variable: "--font-hebrew"
 export const metadata: Metadata = {
   title: "BookIt — B&B Manager",
   description: "Room listings, bookings and availability for your B&B",
+  icons: { icon: "/logo.png", apple: "/logo.png" },
 };
 
 export const viewport: Viewport = {

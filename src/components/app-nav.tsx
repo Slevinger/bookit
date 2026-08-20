@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BedDouble, CalendarDays, Languages, ListChecks, LogOut, Plus, Search, Settings } from "lucide-react";
@@ -28,9 +29,14 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
         <div className="flex h-16 items-center gap-3 px-4 sm:gap-5 sm:px-6">
           <Link href="/calendar" className="flex items-center gap-2.5 text-xl font-bold tracking-tight">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <CalendarDays className="size-5" />
-            </span>
+            <Image
+              src="/logo.png"
+              alt={t("appName")}
+              width={36}
+              height={36}
+              priority
+              className="size-9 rounded-xl object-contain"
+            />
             {t("appName")}
           </Link>
 
