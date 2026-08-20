@@ -18,7 +18,7 @@ export async function createRoomAction(input: RoomInput): Promise<ActionResult<R
     const { roomService } = getTenantContainer(await requireTenant());
     const room = await roomService.createRoom(input);
     revalidatePath("/rooms");
-    revalidatePath("/");
+    revalidatePath("/calendar");
     return { ok: true, data: room };
   } catch (error) {
     return { ok: false, error: toError(error) };
@@ -33,7 +33,7 @@ export async function updateRoomAction(
     const { roomService } = getTenantContainer(await requireTenant());
     const room = await roomService.updateRoom(id, patch);
     revalidatePath("/rooms");
-    revalidatePath("/");
+    revalidatePath("/calendar");
     return { ok: true, data: room };
   } catch (error) {
     return { ok: false, error: toError(error) };

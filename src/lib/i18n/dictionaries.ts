@@ -4,7 +4,7 @@ export const DEFAULT_LOCALE: Locale = "he";
 export const LOCALE_COOKIE = "bookit_locale";
 
 const en = {
-  appName: "Bookit",
+  appName: "BookIt",
   "nav.calendar": "Calendar",
   "nav.bookings": "Bookings",
   "nav.rooms": "Rooms",
@@ -158,10 +158,12 @@ const en = {
   "list.empty": "No bookings found.",
   "list.editAria": "Edit booking",
 
-  "login.title": "Bookit",
+  "login.title": "BookIt",
   "login.tagline": "Manage your B&B rooms, bookings and availability.",
+  "login.purpose":
+    "BookIt is a booking management app for bed & breakfasts, guesthouses and vacation rentals. Owners manage rooms, reservations and availability in one place, and can sync their bookings to a dedicated Google Calendar.",
   "login.google": "Sign in with Google",
-  "login.calendarNote": "Signing in also lets Bookit sync your bookings to your Google Calendar.",
+  "login.calendarNote": "Signing in also lets BookIt sync your bookings to your Google Calendar.",
 
   "settings.title": "Settings",
   "settings.calendar.title": "Google Calendar",
@@ -203,7 +205,7 @@ const en = {
 export type TranslationKey = keyof typeof en;
 
 const he: Record<TranslationKey, string> = {
-  appName: "Bookit",
+  appName: "BookIt",
   "nav.calendar": "לוח שנה",
   "nav.bookings": "הזמנות",
   "nav.rooms": "חדרים",
@@ -357,10 +359,12 @@ const he: Record<TranslationKey, string> = {
   "list.empty": "לא נמצאו הזמנות.",
   "list.editAria": "עריכת הזמנה",
 
-  "login.title": "Bookit",
+  "login.title": "BookIt",
   "login.tagline": "ניהול חדרים, הזמנות וזמינות של הצימר שלך.",
+  "login.purpose":
+    "BookIt היא אפליקציה לניהול הזמנות לצימרים, בתי הארחה ודירות נופש. בעלי העסק מנהלים חדרים, הזמנות וזמינות במקום אחד, ויכולים לסנכרן את ההזמנות ליומן Google ייעודי.",
   "login.google": "התחברות עם Google",
-  "login.calendarNote": "ההתחברות מאפשרת ל-Bookit לסנכרן את ההזמנות שלך ליומן Google.",
+  "login.calendarNote": "ההתחברות מאפשרת ל-BookIt לסנכרן את ההזמנות שלך ליומן Google.",
 
   "settings.title": "הגדרות",
   "settings.calendar.title": "יומן Google",

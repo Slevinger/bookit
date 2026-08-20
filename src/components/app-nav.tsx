@@ -17,7 +17,7 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
   const { t, switchLocale } = useI18n();
 
   const links = [
-    { href: "/", label: t("nav.calendar"), icon: CalendarDays },
+    { href: "/calendar", label: t("nav.calendar"), icon: CalendarDays },
     { href: "/bookings", label: t("nav.bookings"), icon: ListChecks },
     { href: "/rooms", label: t("nav.rooms"), icon: BedDouble },
   ] as const;
@@ -27,7 +27,7 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
       {/* Top header */}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
         <div className="flex h-16 items-center gap-3 px-4 sm:gap-5 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5 text-xl font-bold tracking-tight">
+          <Link href="/calendar" className="flex items-center gap-2.5 text-xl font-bold tracking-tight">
             <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <CalendarDays className="size-5" />
             </span>

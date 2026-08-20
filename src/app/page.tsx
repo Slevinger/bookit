@@ -1,27 +1,20 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth/auth";
 import { LoginForm } from "@/components/auth/login-form";
 
-/** Only same-origin absolute URLs or root-relative paths are honored. */
-function safeRedirect(target: string | undefined): string | null {
-  if (!target) return null;
-  if (target.startsWith("/")) return target;
-  try {
-    const url = new URL(target);
-    return `${url.pathname}${url.search}` || "/";
-  } catch {
-    return null;
-  }
-}
+export const dynamic = "force-dynamic";
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ from?: string; callbackUrl?: string }>;
-}) {
-  // The proxy redirects unauthenticated users with `callbackUrl`; accept `from` too.
-  const { from, callbackUrl } = await searchParams;
-  const redirectTo = safeRedirect(callbackUrl) ?? safeRedirect(from) ?? "/calendar";
+/**
+ * Public landing page served at the apex domain. It must render without login
+ * and describe the app's purpose and Google data usage — this is the URL
+ * submitted as the OAuth "Application home page" for verification. Signed-in
+ * users are forwarded to the calendar dashboard.
+ */
+export default async function HomePage() {
+  const session = await auth();
+  if (session?.user) redirect("/calendar");
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 p-4">
@@ -46,7 +39,7 @@ export default async function LoginPage({
         </p>
       </header>
       <Suspense>
-        <LoginForm redirectTo={redirectTo} />
+        <LoginForm redirectTo="/calendar" />
       </Suspense>
       <nav className="text-center text-xs text-muted-foreground">
         <Link className="underline" href="/privacy">

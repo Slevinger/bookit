@@ -86,19 +86,19 @@ export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewP
       {/* Month navigation */}
       <div className="flex items-center gap-2.5">
         <Button variant="outline" size="icon-lg" className="size-11" asChild>
-          <Link href={`/?month=${prevMonth}`} aria-label={t("calendar.prevMonth")}>
+          <Link href={`/calendar?month=${prevMonth}`} aria-label={t("calendar.prevMonth")}>
             <ChevronLeft className="size-6 rtl:-scale-x-100" />
           </Link>
         </Button>
         <Button variant="outline" size="icon-lg" className="size-11" asChild>
-          <Link href={`/?month=${nextMonth}`} aria-label={t("calendar.nextMonth")}>
+          <Link href={`/calendar?month=${nextMonth}`} aria-label={t("calendar.nextMonth")}>
             <ChevronRight className="size-6 rtl:-scale-x-100" />
           </Link>
         </Button>
         <h1 className="text-xl font-bold">{monthLabel}</h1>
         {month !== currentMonth && (
           <Button variant="ghost" size="lg" className="text-base" asChild>
-            <Link href="/">{t("calendar.today")}</Link>
+            <Link href="/calendar">{t("calendar.today")}</Link>
           </Button>
         )}
         <Button

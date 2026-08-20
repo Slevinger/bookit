@@ -13,6 +13,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">{t("login.title")}</CardTitle>
         <p className="text-sm text-muted-foreground">{t("login.tagline")}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{t("login.purpose")}</p>
       </CardHeader>
       <CardContent>
         <form action={loginWithGoogle.bind(null, redirectTo)}>

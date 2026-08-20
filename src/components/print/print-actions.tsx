@@ -33,7 +33,7 @@ export function PrintActions({ month, monthLabel, bookings, rooms }: PrintAction
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
       <Button variant="ghost" size="sm" asChild className="text-neutral-600">
-        <Link href={`/?month=${month}`}>
+        <Link href={`/calendar?month=${month}`}>
           <ArrowRight className="size-4 ltr:-scale-x-100" />
           {t("print.backToCalendar")}
         </Link>

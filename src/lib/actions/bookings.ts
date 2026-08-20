@@ -20,7 +20,7 @@ function toError(error: unknown): string {
 }
 
 function revalidateAll() {
-  revalidatePath("/");
+  revalidatePath("/calendar");
   revalidatePath("/bookings");
 }
 

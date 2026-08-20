@@ -2,7 +2,7 @@
 
 import { signIn, signOut } from "./auth";
 
-export async function loginWithGoogle(redirectTo = "/"): Promise<void> {
+export async function loginWithGoogle(redirectTo = "/calendar"): Promise<void> {
   await signIn("google", { redirectTo });
 }
 
