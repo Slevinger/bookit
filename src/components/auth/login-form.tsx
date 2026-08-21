@@ -1,11 +1,18 @@
 "use client";
 
-import { loginWithGoogle } from "@/lib/auth/actions";
+import { loginAsDevUser, loginWithGoogle } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 
-export function LoginForm({ redirectTo }: { redirectTo: string }) {
+export function LoginForm({
+  redirectTo,
+  showDevLogin = false,
+}: {
+  redirectTo: string;
+  showDevLogin?: boolean;
+}) {
   const { t } = useI18n();
 
   return (
@@ -25,6 +32,24 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
         <p className="mt-3 text-center text-xs text-muted-foreground">
           {t("login.calendarNote")}
         </p>
+
+        {showDevLogin && (
+          <form action={loginAsDevUser} className="mt-6 grid gap-2 border-t pt-4">
+            <input type="hidden" name="redirectTo" value={redirectTo} />
+            <p className="text-xs font-medium text-muted-foreground">{t("login.devTitle")}</p>
+            <Input
+              name="userId"
+              autoComplete="off"
+              placeholder={t("login.devPlaceholder")}
+              className="h-12 text-base"
+              dir="ltr"
+            />
+            <Button type="submit" variant="outline" size="lg" className="h-12 w-full text-base">
+              {t("login.devSubmit")}
+            </Button>
+            <p className="text-xs text-muted-foreground">{t("login.devHint")}</p>
+          </form>
+        )}
       </CardContent>
     </Card>
   );

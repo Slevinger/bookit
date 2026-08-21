@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BedDouble, BedSingle, Minus, Pencil, Plus } from "lucide-react";
+import { Baby, BedDouble, BedSingle, CalendarRange, Minus, Pencil, Plus, Sparkles, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { createRoomAction, updateRoomAction } from "@/lib/actions/rooms";
-import { roomCapacity } from "@/lib/domain/room";
+import { DEFAULT_INCLUDED_ADULTS, roomCapacity } from "@/lib/domain/room";
 import { formatMoney } from "@/lib/format";
 import type { Room } from "@/lib/domain/types";
 import type { RoomInput } from "@/lib/services/room-service";
@@ -22,6 +22,16 @@ interface RoomDraft {
   name: string;
   beds: { double: number; single: number };
   basePrice: string;
+  weekendBasePrice: string;
+  includedAdults: number;
+  extraAdultPrice: string;
+  extraChildPrice: string;
+  highSeasonEnabled: boolean;
+  hsBasePrice: string;
+  hsWeekendBasePrice: string;
+  hsIncludedAdults: number;
+  hsExtraAdultPrice: string;
+  hsExtraChildPrice: string;
   description: string;
 }
 
@@ -29,6 +39,16 @@ const emptyDraft: RoomDraft = {
   name: "",
   beds: { double: 1, single: 0 },
   basePrice: "",
+  weekendBasePrice: "",
+  includedAdults: DEFAULT_INCLUDED_ADULTS,
+  extraAdultPrice: "",
+  extraChildPrice: "",
+  highSeasonEnabled: false,
+  hsBasePrice: "",
+  hsWeekendBasePrice: "",
+  hsIncludedAdults: DEFAULT_INCLUDED_ADULTS,
+  hsExtraAdultPrice: "",
+  hsExtraChildPrice: "",
   description: "",
 };
 
@@ -92,7 +112,44 @@ export function RoomsManager({ rooms }: { rooms: Room[] }) {
               <span className="flex items-center gap-1.5">
                 <BedSingle className="size-4" /> {tn("beds.single", room.beds.single)}
               </span>
-              <span>{t("rooms.perNightShort", { price: formatMoney(room.basePrice) })}</span>
+              <span className="flex items-center gap-1.5">
+                <Users className="size-4" />
+                {t("rooms.perNightShort", { price: formatMoney(room.basePrice) })}
+                {" · "}
+                {tn("rooms.includedAdultsShort", room.includedAdults ?? DEFAULT_INCLUDED_ADULTS)}
+              </span>
+              {!!room.weekendBasePrice && (
+                <span className="flex items-center gap-1.5">
+                  <CalendarRange className="size-4" />
+                  {t("rooms.weekendPriceShort", { price: formatMoney(room.weekendBasePrice) })}
+                </span>
+              )}
+              {!!room.extraAdultPrice && (
+                <span className="flex items-center gap-1.5">
+                  <UserPlus className="size-4" />
+                  {t("rooms.extraAdultShort", { price: formatMoney(room.extraAdultPrice) })}
+                </span>
+              )}
+              {!!room.extraChildPrice && (
+                <span className="flex items-center gap-1.5">
+                  <Baby className="size-4" />
+                  {t("rooms.extraChildShort", { price: formatMoney(room.extraChildPrice) })}
+                </span>
+              )}
+              {room.highSeason && (
+                <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                  <Sparkles className="size-4" />
+                  {t("rooms.highSeasonShort", { price: formatMoney(room.highSeason.basePrice) })}
+                </span>
+              )}
+              {!!room.highSeason?.weekendBasePrice && (
+                <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                  <CalendarRange className="size-4" />
+                  {t("rooms.highSeasonWeekendShort", {
+                    price: formatMoney(room.highSeason.weekendBasePrice),
+                  })}
+                </span>
+              )}
             </div>
             {room.description && (
               <p className="truncate text-sm text-muted-foreground">{room.description}</p>
@@ -150,6 +207,22 @@ function RoomWizard({ room, onDone }: { room?: Room; onDone: () => void }) {
           name: room.name,
           beds: { ...room.beds },
           basePrice: String(room.basePrice),
+          weekendBasePrice: room.weekendBasePrice ? String(room.weekendBasePrice) : "",
+          includedAdults: room.includedAdults ?? DEFAULT_INCLUDED_ADULTS,
+          extraAdultPrice: room.extraAdultPrice ? String(room.extraAdultPrice) : "",
+          extraChildPrice: room.extraChildPrice ? String(room.extraChildPrice) : "",
+          highSeasonEnabled: !!room.highSeason,
+          hsBasePrice: room.highSeason ? String(room.highSeason.basePrice) : "",
+          hsWeekendBasePrice: room.highSeason?.weekendBasePrice
+            ? String(room.highSeason.weekendBasePrice)
+            : "",
+          hsIncludedAdults: room.highSeason?.includedAdults ?? DEFAULT_INCLUDED_ADULTS,
+          hsExtraAdultPrice: room.highSeason?.extraAdultPrice
+            ? String(room.highSeason.extraAdultPrice)
+            : "",
+          hsExtraChildPrice: room.highSeason?.extraChildPrice
+            ? String(room.highSeason.extraChildPrice)
+            : "",
           description: room.description,
         }
       : emptyDraft,
@@ -157,10 +230,25 @@ function RoomWizard({ room, onDone }: { room?: Room; onDone: () => void }) {
   const [saving, setSaving] = useState(false);
 
   async function save() {
+    const highSeasonSet = draft.highSeasonEnabled && draft.hsBasePrice !== "";
     const input: RoomInput = {
       name: draft.name,
       beds: draft.beds,
       basePrice: Number(draft.basePrice || 0),
+      weekendBasePrice: draft.weekendBasePrice !== "" ? Number(draft.weekendBasePrice) : undefined,
+      includedAdults: draft.includedAdults,
+      extraAdultPrice: Number(draft.extraAdultPrice || 0),
+      extraChildPrice: Number(draft.extraChildPrice || 0),
+      highSeason: highSeasonSet
+        ? {
+            basePrice: Number(draft.hsBasePrice || 0),
+            weekendBasePrice:
+              draft.hsWeekendBasePrice !== "" ? Number(draft.hsWeekendBasePrice) : undefined,
+            includedAdults: draft.hsIncludedAdults,
+            extraAdultPrice: Number(draft.hsExtraAdultPrice || 0),
+            extraChildPrice: Number(draft.hsExtraChildPrice || 0),
+          }
+        : undefined,
       description: draft.description,
     };
     setSaving(true);
@@ -234,20 +322,176 @@ function RoomWizard({ room, onDone }: { room?: Room; onDone: () => void }) {
       validate: () =>
         draft.basePrice !== "" && Number(draft.basePrice) >= 0 ? null : t("rooms.error.price"),
       content: (
-        <div className="grid gap-2">
-          <Label htmlFor="room-price" className="text-base">{t("rooms.standardPrice")}</Label>
-          <Input
-            id="room-price"
-            type="number"
-            min={0}
-            step="any"
-            inputMode="decimal"
-            className="h-14 text-2xl font-semibold"
-            placeholder="0"
-            value={draft.basePrice}
-            onChange={(e) => setDraft({ ...draft, basePrice: e.target.value })}
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="room-price" className="text-base">{t("rooms.midweekPrice")}</Label>
+            <Input
+              id="room-price"
+              type="number"
+              min={0}
+              step="any"
+              inputMode="decimal"
+              className="h-14 text-2xl font-semibold"
+              placeholder="0"
+              value={draft.basePrice}
+              onChange={(e) => setDraft({ ...draft, basePrice: e.target.value })}
+            />
+            <p className="text-sm text-muted-foreground">{t("rooms.priceHint")}</p>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="room-weekend-price" className="text-base">{t("rooms.weekendPrice")}</Label>
+            <Input
+              id="room-weekend-price"
+              type="number"
+              min={0}
+              step="any"
+              inputMode="decimal"
+              className="h-13 text-base"
+              placeholder={draft.basePrice || "0"}
+              value={draft.weekendBasePrice}
+              onChange={(e) => setDraft({ ...draft, weekendBasePrice: e.target.value })}
+            />
+            <p className="text-sm text-muted-foreground">{t("rooms.weekendPriceHint")}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "extras",
+      title: t("rooms.step.extras"),
+      content: (
+        <div className="grid gap-6 py-1">
+          <p className="text-sm text-muted-foreground">{t("rooms.extrasHint")}</p>
+          <BedStepper
+            label={t("rooms.includedAdults")}
+            value={draft.includedAdults}
+            onChange={(includedAdults) => setDraft({ ...draft, includedAdults })}
           />
-          <p className="text-sm text-muted-foreground">{t("rooms.priceHint")}</p>
+          <div className="grid gap-2">
+            <Label htmlFor="room-extra-adult" className="text-base">
+              {t("rooms.extraAdultPrice")}
+            </Label>
+            <Input
+              id="room-extra-adult"
+              type="number"
+              min={0}
+              step="any"
+              inputMode="decimal"
+              className="h-13 text-base"
+              placeholder="0"
+              value={draft.extraAdultPrice}
+              onChange={(e) => setDraft({ ...draft, extraAdultPrice: e.target.value })}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="room-extra-child" className="text-base">
+              {t("rooms.extraChildPrice")}
+            </Label>
+            <Input
+              id="room-extra-child"
+              type="number"
+              min={0}
+              step="any"
+              inputMode="decimal"
+              className="h-13 text-base"
+              placeholder="0"
+              value={draft.extraChildPrice}
+              onChange={(e) => setDraft({ ...draft, extraChildPrice: e.target.value })}
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "highSeason",
+      title: t("rooms.step.highSeason"),
+      content: (
+        <div className="grid gap-5 py-1">
+          <p className="text-sm text-muted-foreground">{t("rooms.highSeasonHint")}</p>
+          <div className="flex items-center justify-between gap-3 rounded-lg border px-4 py-3">
+            <span className="text-base font-medium">{t("rooms.highSeasonEnable")}</span>
+            <Button
+              type="button"
+              variant={draft.highSeasonEnabled ? "default" : "outline"}
+              size="lg"
+              aria-pressed={draft.highSeasonEnabled}
+              onClick={() => setDraft({ ...draft, highSeasonEnabled: !draft.highSeasonEnabled })}
+            >
+              {draft.highSeasonEnabled ? t("rooms.on") : t("rooms.off")}
+            </Button>
+          </div>
+          {draft.highSeasonEnabled && (
+            <div className="grid gap-5">
+              <div className="grid gap-2">
+                <Label htmlFor="room-hs-price" className="text-base">{t("rooms.highSeasonMidweekPrice")}</Label>
+                <Input
+                  id="room-hs-price"
+                  type="number"
+                  min={0}
+                  step="any"
+                  inputMode="decimal"
+                  className="h-14 text-2xl font-semibold"
+                  placeholder="0"
+                  value={draft.hsBasePrice}
+                  onChange={(e) => setDraft({ ...draft, hsBasePrice: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="room-hs-weekend-price" className="text-base">
+                  {t("rooms.highSeasonWeekendPrice")}
+                </Label>
+                <Input
+                  id="room-hs-weekend-price"
+                  type="number"
+                  min={0}
+                  step="any"
+                  inputMode="decimal"
+                  className="h-13 text-base"
+                  placeholder={draft.hsBasePrice || "0"}
+                  value={draft.hsWeekendBasePrice}
+                  onChange={(e) => setDraft({ ...draft, hsWeekendBasePrice: e.target.value })}
+                />
+                <p className="text-sm text-muted-foreground">{t("rooms.weekendPriceHint")}</p>
+              </div>
+              <BedStepper
+                label={t("rooms.includedAdults")}
+                value={draft.hsIncludedAdults}
+                onChange={(hsIncludedAdults) => setDraft({ ...draft, hsIncludedAdults })}
+              />
+              <div className="grid gap-2">
+                <Label htmlFor="room-hs-extra-adult" className="text-base">
+                  {t("rooms.extraAdultPrice")}
+                </Label>
+                <Input
+                  id="room-hs-extra-adult"
+                  type="number"
+                  min={0}
+                  step="any"
+                  inputMode="decimal"
+                  className="h-13 text-base"
+                  placeholder="0"
+                  value={draft.hsExtraAdultPrice}
+                  onChange={(e) => setDraft({ ...draft, hsExtraAdultPrice: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="room-hs-extra-child" className="text-base">
+                  {t("rooms.extraChildPrice")}
+                </Label>
+                <Input
+                  id="room-hs-extra-child"
+                  type="number"
+                  min={0}
+                  step="any"
+                  inputMode="decimal"
+                  className="h-13 text-base"
+                  placeholder="0"
+                  value={draft.hsExtraChildPrice}
+                  onChange={(e) => setDraft({ ...draft, hsExtraChildPrice: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
         </div>
       ),
     },
@@ -261,6 +505,35 @@ function RoomWizard({ room, onDone }: { room?: Room; onDone: () => void }) {
           <SummaryRow label={t("rooms.summary.beds")} value={formatBeds(draft.beds)} />
           <SummaryRow label={t("rooms.summary.sleeps")} value={String(roomCapacity(draft.beds))} />
           <SummaryRow label={t("rooms.summary.price")} value={formatMoney(Number(draft.basePrice || 0))} />
+          {draft.weekendBasePrice !== "" && (
+            <SummaryRow
+              label={t("rooms.summary.weekendPrice")}
+              value={formatMoney(Number(draft.weekendBasePrice || 0))}
+            />
+          )}
+          <SummaryRow label={t("rooms.summary.includedAdults")} value={String(draft.includedAdults)} />
+          <SummaryRow
+            label={t("rooms.summary.extraAdult")}
+            value={formatMoney(Number(draft.extraAdultPrice || 0))}
+          />
+          <SummaryRow
+            label={t("rooms.summary.extraChild")}
+            value={formatMoney(Number(draft.extraChildPrice || 0))}
+          />
+          <SummaryRow
+            label={t("rooms.summary.highSeason")}
+            value={
+              draft.highSeasonEnabled && draft.hsBasePrice !== ""
+                ? formatMoney(Number(draft.hsBasePrice || 0))
+                : t("rooms.summary.highSeasonOff")
+            }
+          />
+          {draft.highSeasonEnabled && draft.hsBasePrice !== "" && draft.hsWeekendBasePrice !== "" && (
+            <SummaryRow
+              label={t("rooms.summary.highSeasonWeekend")}
+              value={formatMoney(Number(draft.hsWeekendBasePrice || 0))}
+            />
+          )}
         </div>
       ),
     },

@@ -1,11 +1,13 @@
-import type { CollectionReference, Transaction } from "firebase-admin/firestore";
-import type { Booking, Room } from "@/lib/domain/types";
+import type { CollectionReference, DocumentReference, Transaction } from "firebase-admin/firestore";
+import type { Booking, Room, SeasonConfig, Tariff } from "@/lib/domain/types";
 import { findConflicts } from "@/lib/domain/availability";
 import {
   BookingConflictError,
   NotFoundError,
   type BookingRepository,
   type RoomRepository,
+  type SeasonRepository,
+  type TariffRepository,
 } from "./types";
 
 type RoomData = Omit<Room, "id">;
@@ -13,11 +15,23 @@ type BookingData = Omit<Booking, "id">;
 
 const withId = <T>(id: string, data: T) => ({ id, ...data });
 
-/** Rooms saved before the beds model had a numeric `capacity` field instead. */
+/**
+ * Rooms saved before the beds model had a numeric `capacity` field, and rooms
+ * saved before per-adult/child surcharges lacked the occupancy pricing fields.
+ */
 const migrateRoom = (data: RoomData & { capacity?: number }): RoomData => {
-  if (data.beds) return data;
-  const capacity = Math.max(1, data.capacity ?? 2);
-  return { ...data, beds: { double: Math.floor(capacity / 2), single: capacity % 2 } };
+  const withBeds = data.beds
+    ? data
+    : (() => {
+        const capacity = Math.max(1, data.capacity ?? 2);
+        return { ...data, beds: { double: Math.floor(capacity / 2), single: capacity % 2 } };
+      })();
+  return {
+    ...withBeds,
+    includedAdults: withBeds.includedAdults ?? 2,
+    extraAdultPrice: withBeds.extraAdultPrice ?? 0,
+    extraChildPrice: withBeds.extraChildPrice ?? 0,
+  };
 };
 
 /** `rooms` is the tenant-scoped collection (`tenants/{tenantId}/rooms`). */
@@ -42,6 +56,30 @@ export const createFirestoreRoomRepository = (rooms: CollectionReference): RoomR
     if (!doc.exists) throw new NotFoundError("Room", id);
     await ref.update(patch);
     return withId(id, { ...(doc.data() as RoomData), ...patch });
+  },
+});
+
+/** `doc` is the tenant-scoped property tariff singleton (`.../config/tariff`). */
+export const createFirestoreTariffRepository = (doc: DocumentReference): TariffRepository => ({
+  async get() {
+    const snap = await doc.get();
+    return snap.exists ? (snap.data() as Tariff) : null;
+  },
+  async set(tariff) {
+    await doc.set(tariff);
+    return tariff;
+  },
+});
+
+/** `doc` is the tenant-scoped high-season singleton (`.../config/season`). */
+export const createFirestoreSeasonRepository = (doc: DocumentReference): SeasonRepository => ({
+  async get() {
+    const snap = await doc.get();
+    return snap.exists ? (snap.data() as SeasonConfig) : null;
+  },
+  async set(config) {
+    await doc.set(config);
+    return config;
   },
 });
 

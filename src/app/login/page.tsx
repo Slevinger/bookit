@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
+import { DEV_LOGIN_ENABLED } from "@/lib/auth/config";
 
 /** Only same-origin absolute URLs or root-relative paths are honored. */
 function safeRedirect(target: string | undefined): string | null {
@@ -55,7 +56,7 @@ export default async function LoginPage({
         </p>
       </header>
       <Suspense>
-        <LoginForm redirectTo={redirectTo} />
+        <LoginForm redirectTo={redirectTo} showDevLogin={DEV_LOGIN_ENABLED} />
       </Suspense>
       <nav className="text-center text-xs text-muted-foreground">
         <Link className="underline" href="/privacy">

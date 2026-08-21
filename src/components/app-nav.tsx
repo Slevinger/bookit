@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BedDouble, CalendarDays, Languages, ListChecks, LogOut, Plus, Search, Settings } from "lucide-react";
+import { BedDouble, CalendarDays, CalendarRange, Languages, ListChecks, LogOut, Plus, Search, Settings, Tag } from "lucide-react";
 import { logout } from "@/lib/auth/actions";
 import type { Room } from "@/lib/domain/types";
 import { useBookingDialog } from "@/components/booking/booking-dialog";
@@ -21,6 +21,8 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
     { href: "/calendar", label: t("nav.calendar"), icon: CalendarDays },
     { href: "/bookings", label: t("nav.bookings"), icon: ListChecks },
     { href: "/rooms", label: t("nav.rooms"), icon: BedDouble },
+    { href: "/tariff", label: t("nav.tariff"), icon: Tag },
+    { href: "/seasons", label: t("nav.seasons"), icon: CalendarRange },
   ] as const;
 
   return (
@@ -80,6 +82,34 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
             >
               <Languages className="size-5" />
               <span className="text-sm font-semibold">{t("nav.language")}</span>
+            </Button>
+            <Button
+              asChild
+              variant="ghost"
+              size="icon-lg"
+              aria-label={t("nav.tariff")}
+              className={cn(
+                "text-muted-foreground md:hidden",
+                pathname === "/tariff" && "text-foreground",
+              )}
+            >
+              <Link href="/tariff">
+                <Tag className="size-5" />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="ghost"
+              size="icon-lg"
+              aria-label={t("nav.seasons")}
+              className={cn(
+                "text-muted-foreground md:hidden",
+                pathname === "/seasons" && "text-foreground",
+              )}
+            >
+              <Link href="/seasons">
+                <CalendarRange className="size-5" />
+              </Link>
             </Button>
             <Button
               asChild

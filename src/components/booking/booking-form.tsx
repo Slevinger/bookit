@@ -1,7 +1,8 @@
 "use client";
 
+import type { ComponentProps } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus, X } from "lucide-react";
+import { Minus, Plus, Sparkles, X } from "lucide-react";
 import {
   BED_SHORTFALL_CODE,
   bedShortfallNote,
@@ -10,9 +11,34 @@ import {
   isEntireProperty,
   totalGuests,
 } from "@/lib/domain/booking";
-import { addDays, isISODate, isValidRange, nightsBetween } from "@/lib/domain/dates";
+import {
+  addDays,
+  eachDateInRange,
+  isISODate,
+  isValidRange,
+  isWeekendDate,
+  nightsBetween,
+} from "@/lib/domain/dates";
+import {
+  roomPricePerNight,
+  roomPricingForSeason,
+  roomStayBreakdown,
+  roomStayPrice,
+  type StayRateGroup,
+} from "@/lib/domain/room";
+import { isHighSeason } from "@/lib/domain/season";
+import { hasTariff, tariffPricePerNight } from "@/lib/domain/tariff";
 import { formatMoney } from "@/lib/format";
-import type { Booking, BookingDraft, Contact, ISODate, Room, RoomAvailability } from "@/lib/domain/types";
+import type {
+  Booking,
+  BookingDraft,
+  Contact,
+  ISODate,
+  Room,
+  RoomAvailability,
+  SeasonConfig,
+  Tariff,
+} from "@/lib/domain/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +56,10 @@ export interface BookingFormInitial {
 
 export interface BookingFormProps {
   rooms: Room[];
+  /** Property-wide price list used for entire-property bookings. */
+  propertyTariff?: Tariff | null;
+  /** High-season definition used to pick each night's price set. */
+  seasonConfig?: SeasonConfig | null;
   initial: BookingFormInitial;
   checkAvailability: (
     checkIn: ISODate,
@@ -46,7 +76,7 @@ interface ContactForm extends Contact {
 
 const emptyContact = (key: number): ContactForm => ({ key, name: "", phone: "", email: "" });
 
-export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submitLabel }: BookingFormProps) {
+export function BookingForm({ rooms, propertyTariff, seasonConfig, initial, checkAvailability, onSubmit, submitLabel }: BookingFormProps) {
   const { t, tn, noteText, translateError } = useI18n();
   const editing = initial.booking;
   const [checkIn, setCheckIn] = useState(editing?.checkIn ?? initial.checkIn);
@@ -92,6 +122,8 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const checkOutRef = useRef<HTMLInputElement>(null);
+
   const nights = isValidRange(checkIn, checkOut) ? nightsBetween(checkIn, checkOut) : 0;
 
   // Remember the last valid stay length so editing check-in (which passes
@@ -101,9 +133,36 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
     if (nights > 0) lastNightsRef.current = nights;
   }, [nights]);
 
+  const isHigh = useCallback(
+    (date: ISODate) => isHighSeason(date, seasonConfig),
+    [seasonConfig],
+  );
+
+  // Which of the booked nights fall on high-season / holiday / weekend dates, so
+  // the guest sees up front that the stay is priced as "special".
+  const specialNights = useMemo(() => {
+    if (!isValidRange(checkIn, checkOut)) {
+      return { highSeason: 0, weekend: 0, holidays: [] as string[] };
+    }
+    const nightsInStay = eachDateInRange(checkIn, checkOut);
+    const holidays = nightsInStay
+      .map((d) => seasonConfig?.holidays.find((h) => h.date === d)?.title)
+      .filter((title): title is string => !!title);
+    return {
+      highSeason: nightsInStay.filter((d) => isHigh(d)).length,
+      weekend: nightsInStay.filter(isWeekendDate).length,
+      holidays: [...new Set(holidays)],
+    };
+  }, [checkIn, checkOut, isHigh, seasonConfig]);
+
+  // Whole-stay price, summed per night so a stay crossing into high season
+  // mixes both price sets correctly.
   const defaultPrice = useCallback(
-    (room: Room) => room.basePrice * Math.max(nights, 1),
-    [nights],
+    (room: Room): number =>
+      isValidRange(checkIn, checkOut)
+        ? roomStayPrice(room, { adults, children }, checkIn, checkOut, isHigh, isWeekendDate)
+        : roomPricePerNight(roomPricingForSeason(room, false), { adults, children }),
+    [checkIn, checkOut, adults, children, isHigh],
   );
 
   const priceFor = useCallback(
@@ -145,8 +204,11 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
   const activeRooms = useMemo(() => rooms.filter((r) => r.isActive), [rooms]);
   const entire = isEntireProperty([...selectedIds], rooms);
   const entireDefault = useMemo(
-    () => activeRooms.reduce((sum, room) => sum + defaultPrice(room), 0),
-    [activeRooms, defaultPrice],
+    () =>
+      hasTariff(propertyTariff)
+        ? tariffPricePerNight(propertyTariff, { adults, children }) * Math.max(nights, 1)
+        : activeRooms.reduce((sum, room) => sum + defaultPrice(room), 0),
+    [propertyTariff, adults, children, nights, activeRooms, defaultPrice],
   );
   const propertyPrice = propertyPriceOverride ?? entireDefault;
 
@@ -263,6 +325,8 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
                 if (isISODate(nextCheckIn)) {
                   const stay = nights > 0 ? nights : lastNightsRef.current;
                   setCheckOut(addDays(nextCheckIn, stay));
+                  // Move the guest straight to picking the end date.
+                  checkOutRef.current?.focus();
                 }
               }}
             />
@@ -276,6 +340,7 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
           <div className="grid gap-2">
             <Label htmlFor="checkOut" className="text-base">{t("booking.checkOut")}</Label>
             <Input
+              ref={checkOutRef}
               id="checkOut"
               type="date"
               className="h-13 text-base"
@@ -285,6 +350,22 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
             />
             <p className="text-sm text-muted-foreground">{t("booking.checkOutHint")}</p>
           </div>
+          {(specialNights.highSeason > 0 || specialNights.weekend > 0) && (
+            <div className="grid gap-1 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-700 dark:text-amber-300">
+              <p className="flex items-center gap-1.5 font-medium">
+                <Sparkles className="size-4" /> {t("booking.specialDates")}
+              </p>
+              {specialNights.highSeason > 0 && (
+                <p>{tn("booking.highSeasonNights", specialNights.highSeason)}</p>
+              )}
+              {specialNights.weekend > 0 && (
+                <p>{tn("booking.weekendNights", specialNights.weekend)}</p>
+              )}
+              {specialNights.holidays.length > 0 && (
+                <p>{t("booking.holidaysInStay", { list: specialNights.holidays.join(", ") })}</p>
+              )}
+            </div>
+          )}
         </div>
       ),
     },
@@ -352,14 +433,11 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
                     {t("booking.stayPrice", { nights: tn("booking.nightsCount", nights) })}
                   </p>
                 </div>
-                <Input
+                <PriceInput
                   aria-label={t("booking.entirePropertyPrice")}
-                  type="number"
-                  min={0}
-                  step="any"
                   className="h-12 w-32 text-base"
                   value={propertyPrice}
-                  onChange={(e) => setPropertyPriceOverride(Number(e.target.value))}
+                  onChange={setPropertyPriceOverride}
                 />
               </div>
               <div className="flex items-center justify-between border-t pt-3 text-base font-semibold">
@@ -375,25 +453,38 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
                 </p>
                 {selectedRooms.map(({ roomId, price }) => {
                   const room = rooms.find((r) => r.id === roomId);
+                  const groups =
+                    room && nights > 0
+                      ? roomStayBreakdown(
+                          room,
+                          { adults, children },
+                          checkIn,
+                          checkOut,
+                          isHigh,
+                          isWeekendDate,
+                        )
+                      : [];
+                  const computed = groups.reduce((sum, g) => sum + g.subtotal, 0);
+                  const overridden = priceOverrides.has(roomId) && price !== computed;
                   return (
-                    <div key={roomId} className="flex items-center gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-base">{roomName(roomId)}</p>
-                        {room && nights > 0 && (
-                          <p className="text-sm text-muted-foreground">
-                            {t("booking.perNight", { price: formatMoney(room.basePrice), nights })}
-                          </p>
-                        )}
+                    <div key={roomId} className="grid gap-2 border-b pb-3 last:border-b-0 last:pb-0">
+                      <div className="flex items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-base font-medium">{roomName(roomId)}</p>
+                        </div>
+                        <PriceInput
+                          aria-label={t("booking.priceFor", { room: roomName(roomId) })}
+                          className="h-12 w-32 text-base"
+                          value={price}
+                          onChange={(value) => setPrice(roomId, value)}
+                        />
                       </div>
-                      <Input
-                        aria-label={t("booking.priceFor", { room: roomName(roomId) })}
-                        type="number"
-                        min={0}
-                        step="any"
-                        className="h-12 w-32 text-base"
-                        value={price}
-                        onChange={(e) => setPrice(roomId, Number(e.target.value))}
-                      />
+                      {groups.length > 0 && <RoomReceipt groups={groups} />}
+                      {overridden && (
+                        <p className="text-xs text-muted-foreground">
+                          {t("booking.autoPrice", { price: formatMoney(computed) })}
+                        </p>
+                      )}
                     </div>
                   );
                 })}
@@ -514,6 +605,14 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
             value={`${checkIn} → ${checkOut} (${tn("booking.nightsCount", nights)})`}
             ltr
           />
+          {(specialNights.highSeason > 0 || specialNights.holidays.length > 0) && (
+            <p className="flex items-center gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-600 dark:text-amber-400">
+              <Sparkles className="size-4 shrink-0" />
+              {specialNights.holidays.length > 0
+                ? t("booking.holidaysInStay", { list: specialNights.holidays.join(", ") })
+                : t("booking.specialDates")}
+            </p>
+          )}
           <SummaryRow
             label={t("booking.summary.guests")}
             value={t("booking.summary.guestsValue", {
@@ -580,6 +679,48 @@ export function BookingForm({ rooms, initial, checkAvailability, onSubmit, submi
   );
 }
 
+function RoomReceipt({ groups }: { groups: StayRateGroup[] }) {
+  const { t, tn } = useI18n();
+  const label = (g: StayRateGroup) =>
+    g.high
+      ? g.weekend
+        ? t("booking.receipt.highWeekend")
+        : t("booking.receipt.highMidweek")
+      : g.weekend
+        ? t("booking.receipt.lowWeekend")
+        : t("booking.receipt.lowMidweek");
+  const composition = (g: StayRateGroup) => {
+    const parts = [t("booking.receipt.base", { price: formatMoney(g.base) })];
+    if (g.extraAdults > 0 && g.extraAdultPrice > 0) {
+      parts.push(
+        t("booking.receipt.extraAdults", { n: g.extraAdults, price: formatMoney(g.extraAdultPrice) }),
+      );
+    }
+    if (g.children > 0 && g.extraChildPrice > 0) {
+      parts.push(t("booking.receipt.extraChildren", { n: g.children, price: formatMoney(g.extraChildPrice) }));
+    }
+    return parts.join(" + ");
+  };
+  return (
+    <div className="grid gap-1.5">
+      {groups.map((g, i) => (
+        <div key={i} className="grid gap-0.5">
+          <div className="flex items-baseline justify-between gap-2 text-sm">
+            <span className="text-muted-foreground">
+              {label(g)} · {tn("booking.nightsCount", g.nights)}
+            </span>
+            <span className="tabular-nums">{formatMoney(g.subtotal)}</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t("booking.receipt.line", { nights: g.nights, price: formatMoney(g.perNight) })}
+            {g.perNight !== g.base && ` · ${composition(g)}`}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SummaryRow({
   label,
   value,
@@ -598,6 +739,37 @@ function SummaryRow({
         {value}
       </span>
     </div>
+  );
+}
+
+function PriceInput({
+  value,
+  onChange,
+  ...props
+}: {
+  value: number;
+  onChange: (value: number) => void;
+} & Omit<ComponentProps<typeof Input>, "value" | "onChange" | "type">) {
+  // While the field is being edited we keep the raw text so an emptied field
+  // stays empty (showing the placeholder) instead of snapping back to 0.
+  const [raw, setRaw] = useState<string | null>(null);
+  return (
+    <Input
+      type="number"
+      min={0}
+      step="any"
+      inputMode="decimal"
+      placeholder="0"
+      value={raw ?? String(value)}
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => {
+        const next = e.target.value;
+        setRaw(next);
+        onChange(next === "" ? 0 : Number(next));
+      }}
+      onBlur={() => setRaw(null)}
+      {...props}
+    />
   );
 }
 

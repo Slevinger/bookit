@@ -9,7 +9,7 @@ import {
   updateBookingAction,
 } from "@/lib/actions/bookings";
 import { todayISO, addDays } from "@/lib/domain/dates";
-import type { Booking, BookingDraft, ISODate, Room } from "@/lib/domain/types";
+import type { Booking, BookingDraft, ISODate, Room, SeasonConfig, Tariff } from "@/lib/domain/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n";
 import { BookingForm, type BookingFormInitial } from "./booking-form";
@@ -33,7 +33,17 @@ export function useBookingDialog(): BookingDialogApi {
   return api;
 }
 
-export function BookingDialogProvider({ rooms, children }: { rooms: Room[]; children: React.ReactNode }) {
+export function BookingDialogProvider({
+  rooms,
+  propertyTariff,
+  seasonConfig,
+  children,
+}: {
+  rooms: Room[];
+  propertyTariff?: Tariff | null;
+  seasonConfig?: SeasonConfig | null;
+  children: React.ReactNode;
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const [initial, setInitial] = useState<BookingFormInitial | null>(null);
@@ -85,6 +95,8 @@ export function BookingDialogProvider({ rooms, children }: { rooms: Room[]; chil
           {initial && (
             <BookingForm
               rooms={rooms}
+              propertyTariff={propertyTariff}
+              seasonConfig={seasonConfig}
               initial={initial}
               checkAvailability={checkAvailability}
               onSubmit={handleSubmit}

@@ -1,5 +1,12 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
+import Credentials from "next-auth/providers/credentials";
+
+/** Dev-only sign-in: any user id becomes the tenant id, so you can switch
+ * between isolated accounts locally without Google OAuth. Never enabled in
+ * production. */
+export const DEV_LOGIN_ENABLED = process.env.NODE_ENV !== "production";
+export const DEV_PROVIDER_ID = "dev";
 
 /**
  * Google OAuth scopes, kept to the minimum:
@@ -33,6 +40,20 @@ export const authConfig = {
         },
       },
     }),
+    ...(DEV_LOGIN_ENABLED
+      ? [
+          Credentials({
+            id: DEV_PROVIDER_ID,
+            name: "Local dev user",
+            credentials: { userId: { label: "User id", type: "text" } },
+            authorize: (creds) => {
+              const userId = typeof creds?.userId === "string" ? creds.userId.trim() : "";
+              if (!userId) return null;
+              return { id: userId, email: `${userId}@local`, name: userId };
+            },
+          }),
+        ]
+      : []),
   ],
   session: { strategy: "jwt" },
   // Cloud Run terminates TLS at a proxy; trust the forwarded host header.
@@ -48,16 +69,21 @@ export const authConfig = {
     // Firestore (in Node) for background calendar sync. Google only returns a
     // refresh token on consent, so keep any previously stored one when a later
     // `account` lacks it.
-    jwt: ({ token, account }) => {
+    jwt: ({ token, account, user }) => {
       if (account) {
-        // `providerAccountId` is Google's stable numeric user id. Using it as
-        // the tenant id avoids the random `crypto.randomUUID()` that Auth.js
-        // assigns to `token.sub` when there is no database adapter (which would
-        // otherwise create a brand-new empty tenant on every sign-in).
-        if (account.providerAccountId) token.googleId = account.providerAccountId;
-        token.accessToken = account.access_token;
-        token.expiresAt = account.expires_at;
-        if (account.refresh_token) token.refreshToken = account.refresh_token;
+        if (account.provider === DEV_PROVIDER_ID) {
+          // Local dev sign-in: the entered user id is the tenant id.
+          token.googleId = user?.id ?? account.providerAccountId ?? token.sub;
+        } else {
+          // `providerAccountId` is Google's stable numeric user id. Using it as
+          // the tenant id avoids the random `crypto.randomUUID()` that Auth.js
+          // assigns to `token.sub` when there is no database adapter (which would
+          // otherwise create a brand-new empty tenant on every sign-in).
+          if (account.providerAccountId) token.googleId = account.providerAccountId;
+          token.accessToken = account.access_token;
+          token.expiresAt = account.expires_at;
+          if (account.refresh_token) token.refreshToken = account.refresh_token;
+        }
       }
       return token;
     },

@@ -1,13 +1,25 @@
 import { findConflicts } from "@/lib/domain/availability";
 import { rangesOverlap } from "@/lib/domain/dates";
-import type { Booking, Room } from "@/lib/domain/types";
+import type { Booking, Room, SeasonConfig, Tariff } from "@/lib/domain/types";
 import { BookingConflictError, NotFoundError } from "./types";
-import type { BookingRepository, RoomRepository } from "./types";
+import type {
+  BookingRepository,
+  RoomRepository,
+  SeasonRepository,
+  TariffRepository,
+} from "./types";
 
 /** In-memory repositories for tests and local prototyping. */
-export function createInMemoryRepos(seed?: { rooms?: Room[]; bookings?: Booking[] }) {
+export function createInMemoryRepos(seed?: {
+  rooms?: Room[];
+  bookings?: Booking[];
+  tariff?: Tariff;
+  season?: SeasonConfig;
+}) {
   const rooms = new Map<string, Room>((seed?.rooms ?? []).map((r) => [r.id, r]));
   const bookings = new Map<string, Booking>((seed?.bookings ?? []).map((b) => [b.id, b]));
+  let tariff: Tariff | null = seed?.tariff ?? null;
+  let season: SeasonConfig | null = seed?.season ?? null;
   let nextId = 1;
   const genId = (prefix: string) => `${prefix}_${nextId++}`;
 
@@ -79,5 +91,25 @@ export function createInMemoryRepos(seed?: { rooms?: Room[]; bookings?: Booking[
     },
   };
 
-  return { roomRepo, bookingRepo };
+  const tariffRepo: TariffRepository = {
+    async get() {
+      return tariff;
+    },
+    async set(next) {
+      tariff = next;
+      return next;
+    },
+  };
+
+  const seasonRepo: SeasonRepository = {
+    async get() {
+      return season;
+    },
+    async set(next) {
+      season = next;
+      return next;
+    },
+  };
+
+  return { roomRepo, bookingRepo, tariffRepo, seasonRepo };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, ChevronLeft, ChevronRight, Pencil, Printer, Users, XCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -9,8 +9,9 @@ import { cancelBookingAction, confirmBookingAction } from "@/lib/actions/booking
 import { bookingTotal, isEntireProperty, totalGuests } from "@/lib/domain/booking";
 import { formatMoney } from "@/lib/format";
 import { layoutRoomBars } from "@/lib/domain/calendar-layout";
-import { addDays, eachDateInRange, todayISO } from "@/lib/domain/dates";
-import type { Booking, ISODate, Room } from "@/lib/domain/types";
+import { addDays, eachDateInRange, isWeekendDate, todayISO } from "@/lib/domain/dates";
+import { isHighSeason } from "@/lib/domain/season";
+import type { Booking, ISODate, Room, SeasonConfig } from "@/lib/domain/types";
 import { useBookingDialog } from "@/components/booking/booking-dialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -39,28 +40,48 @@ function barClasses(booking: Booking): string {
 export interface CalendarViewProps {
   rooms: Room[];
   bookings: Booking[];
+  seasonConfig?: SeasonConfig | null;
   month: string; // YYYY-MM
   from: ISODate;
   to: ISODate;
 }
 
-export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewProps) {
+export function CalendarView({ rooms, bookings, seasonConfig, month, from, to }: CalendarViewProps) {
   const { t, dateLocale } = useI18n();
   const { openNew } = useBookingDialog();
   const days = eachDateInRange(from, to);
   const today = todayISO();
   const activeRooms = rooms.filter((r) => r.isActive);
   const todayRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const isHigh = (day: ISODate) => isHighSeason(day, seasonConfig);
+  const holidayTitle = (day: ISODate) =>
+    seasonConfig?.holidays.find((h) => h.date === day)?.title;
 
   // On phones only a week or so fits; start the view at today instead of the 1st.
   useEffect(() => {
     todayRef.current?.scrollIntoView({ inline: "center", block: "nearest" });
   }, [month]);
 
-  const isWeekend = (day: ISODate) => {
-    const dow = new Date(day + "T00:00:00").getDay();
-    return dow === 5 || dow === 6; // Fri + Sat
-  };
+  // Rows grow so exactly 4 fill the visible area (with any extras scrolling).
+  const MIN_ROW_HEIGHT = 64;
+  const [rowHeight, setRowHeight] = useState(MIN_ROW_HEIGHT);
+  useEffect(() => {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    const recompute = () => {
+      const available = scroll.clientHeight - (headerRef.current?.offsetHeight ?? 0);
+      setRowHeight(Math.max(MIN_ROW_HEIGHT, Math.floor(available / 4)));
+    };
+    recompute();
+    const observer = new ResizeObserver(recompute);
+    observer.observe(scroll);
+    if (headerRef.current) observer.observe(headerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const isWeekend = isWeekendDate;
 
   const [y, m] = month.split("-").map(Number);
   const monthLabel = new Date(y, m - 1).toLocaleDateString(dateLocale, { month: "long", year: "numeric" });
@@ -82,7 +103,7 @@ export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewP
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
       {/* Month navigation */}
       <div className="flex items-center gap-2.5">
         <Button variant="outline" size="icon-lg" className="size-11" asChild>
@@ -113,12 +134,14 @@ export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewP
         </Button>
       </div>
 
-      {/* Grid — always LTR: bar positioning is left-based and the date axis reads left-to-right. */}
-      <div dir="ltr" className="overflow-x-auto rounded-lg border">
+      {/* Grid — always LTR: bar positioning is left-based and the date axis reads left-to-right.
+          Fills the available height; room rows grow so 4 fill it, with extras scrolling
+          vertically under the pinned header. */}
+      <div ref={scrollRef} dir="ltr" className="min-h-0 flex-1 overflow-auto rounded-lg border">
         <div className="min-w-fit">
-          {/* Day header */}
-          <div className="flex border-b bg-muted/50">
-            <div className="sticky left-0 z-20 w-24 shrink-0 border-r bg-muted px-2 py-2 text-sm font-medium sm:w-36">
+          {/* Day header — pinned to the top while the room rows scroll under it. */}
+          <div ref={headerRef} className="sticky top-0 z-30 flex border-b bg-muted">
+            <div className="sticky left-0 z-40 w-24 shrink-0 border-r bg-muted px-2 py-2 text-sm font-medium sm:w-36">
               {t("calendar.room")}
             </div>
             <div className="grid flex-1" style={gridTemplate}>
@@ -126,15 +149,28 @@ export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewP
                 <div
                   key={day}
                   ref={day === today ? todayRef : undefined}
+                  title={holidayTitle(day)}
                   className={cn(
-                    "border-r py-1.5 text-center text-xs leading-tight text-muted-foreground last:border-r-0",
+                    "relative border-r py-1.5 text-center text-xs leading-tight text-muted-foreground last:border-r-0",
                     isWeekend(day) && "bg-muted",
+                    isHigh(day) && "bg-amber-500/15 text-amber-700 dark:text-amber-300",
                     day < today && "bg-muted/80 opacity-45",
                     day === today && "bg-primary/15 font-bold text-primary",
                   )}
                 >
                   <div>{new Date(day + "T00:00:00").toLocaleDateString(dateLocale, { weekday: "short" })}</div>
                   <div className="text-base font-semibold">{Number(day.slice(8, 10))}</div>
+                  {holidayTitle(day) && (
+                    <div className="truncate px-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                      {holidayTitle(day)}
+                    </div>
+                  )}
+                  {isHigh(day) && (
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-0 bottom-0 h-0.5 bg-amber-500"
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -148,7 +184,7 @@ export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewP
                 <div className="sticky left-0 z-20 flex w-24 shrink-0 items-center border-r bg-background px-2 py-1 sm:w-36">
                   <span className="truncate text-base font-medium">{room.name}</span>
                 </div>
-                <div className="relative grid h-16 flex-1" style={gridTemplate}>
+                <div className="relative grid flex-1" style={{ ...gridTemplate, height: rowHeight }}>
                   {days.map((day) =>
                     day < today ? (
                       // Past days are grayed out and not bookable.
@@ -162,6 +198,7 @@ export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewP
                         className={cn(
                           "border-r transition-colors last:border-r-0 hover:bg-accent active:bg-accent",
                           isWeekend(day) && "bg-muted/40",
+                          isHigh(day) && "bg-amber-500/10",
                           day === today && "bg-primary/10",
                         )}
                       />
@@ -187,7 +224,13 @@ export function CalendarView({ rooms, bookings, month, from, to }: CalendarViewP
           })}
         </div>
       </div>
-      <p className="text-sm text-muted-foreground">{t("calendar.hint")}</p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+        <p>{t("calendar.hint")}</p>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block size-3 rounded-sm bg-amber-500/40 ring-1 ring-amber-500" />
+          {t("calendar.highSeasonLegend")}
+        </span>
+      </div>
     </div>
   );
 }
