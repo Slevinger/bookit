@@ -52,6 +52,15 @@ export function createSeasonService({ seasonRepo }: { seasonRepo: SeasonReposito
       const config = await load();
       return seasonRepo.set({ ...config, manualRanges });
     },
+
+    /** Drops a single imported holiday by its date (stays gone unless re-imported). */
+    async removeHoliday(date: string): Promise<SeasonConfig> {
+      const config = await load();
+      return seasonRepo.set({
+        ...config,
+        holidays: config.holidays.filter((h) => h.date !== date),
+      });
+    },
   };
 }
 

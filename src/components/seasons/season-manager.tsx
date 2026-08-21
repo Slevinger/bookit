@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarRange, Plus, RefreshCw, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
-import { importSeasonYearAction, saveSeasonRangesAction } from "@/lib/actions/seasons";
+import {
+  importSeasonYearAction,
+  removeSeasonHolidayAction,
+  saveSeasonRangesAction,
+} from "@/lib/actions/seasons";
 import type { HighSeasonRange, SeasonConfig } from "@/lib/domain/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +40,19 @@ export function SeasonManager({ config, years }: { config: SeasonConfig; years: 
     setImporting(null);
     if (result.ok) {
       toast.success(t("seasons.imported", { year }));
+      router.refresh();
+    } else {
+      toast.error(result.error);
+    }
+  }
+
+  const [removing, setRemoving] = useState<string | null>(null);
+  async function removeHoliday(date: string, title: string) {
+    setRemoving(date);
+    const result = await removeSeasonHolidayAction(date);
+    setRemoving(null);
+    if (result.ok) {
+      toast.success(t("seasons.holidayRemoved", { name: title }));
       router.refresh();
     } else {
       toast.error(result.error);
@@ -111,10 +128,19 @@ export function SeasonManager({ config, years }: { config: SeasonConfig; years: 
                     {holidays.map((h) => (
                       <span
                         key={h.date}
-                        className="rounded-md bg-primary/10 px-2 py-1 text-xs text-primary"
+                        className="flex items-center gap-1 rounded-md bg-primary/10 py-1 pe-1 ps-2 text-xs text-primary"
                         title={new Date(`${h.date}T00:00:00`).toLocaleDateString(dateLocale)}
                       >
                         {h.title}
+                        <button
+                          type="button"
+                          aria-label={t("seasons.removeHoliday", { name: h.title })}
+                          disabled={removing !== null}
+                          onClick={() => removeHoliday(h.date, h.title)}
+                          className="rounded-full p-0.5 text-primary/70 transition-colors hover:bg-primary/20 hover:text-primary disabled:opacity-50"
+                        >
+                          <X className="size-3" />
+                        </button>
                       </span>
                     ))}
                   </div>

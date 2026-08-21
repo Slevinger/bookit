@@ -322,37 +322,65 @@ function RoomWizard({ room, onDone }: { room?: Room; onDone: () => void }) {
       validate: () =>
         draft.basePrice !== "" && Number(draft.basePrice) >= 0 ? null : t("rooms.error.price"),
       content: (
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="room-price" className="text-base">{t("rooms.midweekPrice")}</Label>
-            <Input
-              id="room-price"
-              type="number"
-              min={0}
-              step="any"
-              inputMode="decimal"
-              className="h-14 text-2xl font-semibold"
-              placeholder="0"
-              value={draft.basePrice}
-              onChange={(e) => setDraft({ ...draft, basePrice: e.target.value })}
-            />
-            <p className="text-sm text-muted-foreground">{t("rooms.priceHint")}</p>
+        <div className="grid gap-5">
+          <div className="flex items-center justify-between gap-3 rounded-lg border px-4 py-3">
+            <span className="text-base font-medium">{t("rooms.highSeasonEnable")}</span>
+            <Button
+              type="button"
+              variant={draft.highSeasonEnabled ? "default" : "outline"}
+              size="lg"
+              aria-pressed={draft.highSeasonEnabled}
+              onClick={() => setDraft({ ...draft, highSeasonEnabled: !draft.highSeasonEnabled })}
+            >
+              {draft.highSeasonEnabled ? t("rooms.on") : t("rooms.off")}
+            </Button>
           </div>
+
           <div className="grid gap-2">
-            <Label htmlFor="room-weekend-price" className="text-base">{t("rooms.weekendPrice")}</Label>
-            <Input
-              id="room-weekend-price"
-              type="number"
-              min={0}
-              step="any"
-              inputMode="decimal"
-              className="h-13 text-base"
-              placeholder={draft.basePrice || "0"}
-              value={draft.weekendBasePrice}
-              onChange={(e) => setDraft({ ...draft, weekendBasePrice: e.target.value })}
-            />
-            <p className="text-sm text-muted-foreground">{t("rooms.weekendPriceHint")}</p>
+            <p className="text-sm font-semibold text-muted-foreground">{t("rooms.pricing.low")}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <PriceField
+                id="room-price"
+                label={t("rooms.pricing.midweek")}
+                value={draft.basePrice}
+                placeholder="0"
+                onChange={(v) => setDraft({ ...draft, basePrice: v })}
+              />
+              <PriceField
+                id="room-weekend-price"
+                label={t("rooms.pricing.weekend")}
+                value={draft.weekendBasePrice}
+                placeholder={draft.basePrice || "0"}
+                onChange={(v) => setDraft({ ...draft, weekendBasePrice: v })}
+              />
+            </div>
           </div>
+
+          {draft.highSeasonEnabled && (
+            <div className="grid gap-2">
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                <Sparkles className="size-4" /> {t("rooms.pricing.high")}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <PriceField
+                  id="room-hs-price"
+                  label={t("rooms.pricing.midweek")}
+                  value={draft.hsBasePrice}
+                  placeholder={draft.basePrice || "0"}
+                  onChange={(v) => setDraft({ ...draft, hsBasePrice: v })}
+                />
+                <PriceField
+                  id="room-hs-weekend-price"
+                  label={t("rooms.pricing.weekend")}
+                  value={draft.hsWeekendBasePrice}
+                  placeholder={draft.hsBasePrice || draft.basePrice || "0"}
+                  onChange={(v) => setDraft({ ...draft, hsWeekendBasePrice: v })}
+                />
+              </div>
+            </div>
+          )}
+
+          <p className="text-sm text-muted-foreground">{t("rooms.weekendPriceHint")}</p>
         </div>
       ),
     },
@@ -407,52 +435,9 @@ function RoomWizard({ room, onDone }: { room?: Room; onDone: () => void }) {
       title: t("rooms.step.highSeason"),
       content: (
         <div className="grid gap-5 py-1">
-          <p className="text-sm text-muted-foreground">{t("rooms.highSeasonHint")}</p>
-          <div className="flex items-center justify-between gap-3 rounded-lg border px-4 py-3">
-            <span className="text-base font-medium">{t("rooms.highSeasonEnable")}</span>
-            <Button
-              type="button"
-              variant={draft.highSeasonEnabled ? "default" : "outline"}
-              size="lg"
-              aria-pressed={draft.highSeasonEnabled}
-              onClick={() => setDraft({ ...draft, highSeasonEnabled: !draft.highSeasonEnabled })}
-            >
-              {draft.highSeasonEnabled ? t("rooms.on") : t("rooms.off")}
-            </Button>
-          </div>
-          {draft.highSeasonEnabled && (
+          {draft.highSeasonEnabled ? (
             <div className="grid gap-5">
-              <div className="grid gap-2">
-                <Label htmlFor="room-hs-price" className="text-base">{t("rooms.highSeasonMidweekPrice")}</Label>
-                <Input
-                  id="room-hs-price"
-                  type="number"
-                  min={0}
-                  step="any"
-                  inputMode="decimal"
-                  className="h-14 text-2xl font-semibold"
-                  placeholder="0"
-                  value={draft.hsBasePrice}
-                  onChange={(e) => setDraft({ ...draft, hsBasePrice: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="room-hs-weekend-price" className="text-base">
-                  {t("rooms.highSeasonWeekendPrice")}
-                </Label>
-                <Input
-                  id="room-hs-weekend-price"
-                  type="number"
-                  min={0}
-                  step="any"
-                  inputMode="decimal"
-                  className="h-13 text-base"
-                  placeholder={draft.hsBasePrice || "0"}
-                  value={draft.hsWeekendBasePrice}
-                  onChange={(e) => setDraft({ ...draft, hsWeekendBasePrice: e.target.value })}
-                />
-                <p className="text-sm text-muted-foreground">{t("rooms.weekendPriceHint")}</p>
-              </div>
+              <p className="text-sm text-muted-foreground">{t("rooms.highSeasonExtrasHint")}</p>
               <BedStepper
                 label={t("rooms.includedAdults")}
                 value={draft.hsIncludedAdults}
@@ -491,6 +476,8 @@ function RoomWizard({ room, onDone }: { room?: Room; onDone: () => void }) {
                 />
               </div>
             </div>
+          ) : (
+            <p className="py-2 text-sm text-muted-foreground">{t("rooms.highSeasonDisabledNote")}</p>
           )}
         </div>
       ),
@@ -546,6 +533,39 @@ function RoomWizard({ room, onDone }: { room?: Room; onDone: () => void }) {
       finishLabel={room ? t("rooms.saveChanges") : t("rooms.add")}
       submitting={saving}
     />
+  );
+}
+
+function PriceField({
+  id,
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor={id} className="text-sm text-muted-foreground">
+        {label}
+      </Label>
+      <Input
+        id={id}
+        type="number"
+        min={0}
+        step="any"
+        inputMode="decimal"
+        className="h-13 text-lg font-semibold"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
   );
 }
 

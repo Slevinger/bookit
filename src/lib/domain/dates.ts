@@ -38,10 +38,10 @@ export const eachDateInRange = (start: ISODate, end: ISODate): ISODate[] => {
 export const isValidRange = (checkIn: string, checkOut: string): boolean =>
   isISODate(checkIn) && isISODate(checkOut) && checkIn < checkOut;
 
-/** Weekend in Israel is Friday + Saturday. Uses UTC so it's timezone-safe. */
+/** Weekend rate applies Thursday–Saturday. Uses UTC so it's timezone-safe. */
 export const isWeekendDate = (date: ISODate): boolean => {
   const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
-  return dow === 5 || dow === 6;
+  return dow === 4 || dow === 5 || dow === 6;
 };
 
 export const todayISO = (): ISODate => {

@@ -42,17 +42,17 @@ export const authConfig = {
     }),
     ...(DEV_LOGIN_ENABLED
       ? [
-          Credentials({
-            id: DEV_PROVIDER_ID,
-            name: "Local dev user",
-            credentials: { userId: { label: "User id", type: "text" } },
-            authorize: (creds) => {
-              const userId = typeof creds?.userId === "string" ? creds.userId.trim() : "";
-              if (!userId) return null;
-              return { id: userId, email: `${userId}@local`, name: userId };
-            },
-          }),
-        ]
+        Credentials({
+          id: DEV_PROVIDER_ID,
+          name: "Local dev user",
+          credentials: { userId: { label: "User id", type: "text" } },
+          authorize: (creds) => {
+            const userId = typeof creds?.userId === "string" ? creds.userId.trim() : "";
+            if (!userId) return null;
+            return { id: userId, email: `${userId}@local`, name: userId };
+          },
+        }),
+      ]
       : []),
   ],
   session: { strategy: "jwt" },

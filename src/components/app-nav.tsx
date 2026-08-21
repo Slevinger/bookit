@@ -29,17 +29,20 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
     <>
       {/* Top header */}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
-        <div className="flex h-16 items-center gap-3 px-4 sm:gap-5 sm:px-6">
-          <Link href="/calendar" className="flex items-center gap-2.5 text-xl font-bold tracking-tight">
+        <div className="flex h-16 items-center gap-2 px-3 sm:gap-5 sm:px-6">
+          <Link
+            href="/calendar"
+            className="flex min-w-0 shrink items-center gap-2.5 text-xl font-bold tracking-tight"
+          >
             <Image
               src="/logo.png"
               alt={t("appName")}
               width={36}
               height={36}
               priority
-              className="size-9 rounded-xl object-contain"
+              className="size-9 shrink-0 rounded-xl object-contain"
             />
-            {t("appName")}
+            <span className="truncate">{t("appName")}</span>
           </Link>
 
           {/* Desktop links */}
@@ -60,7 +63,7 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
             ))}
           </nav>
 
-          <div className="ms-auto flex items-center gap-2.5">
+          <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2.5">
             {/* Desktop actions */}
             <div className="hidden items-center gap-2.5 md:flex">
               <AvailabilitySheet rooms={rooms}>
@@ -78,10 +81,10 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
               variant="ghost"
               size="lg"
               onClick={switchLocale}
-              className="gap-1.5 px-2.5 text-muted-foreground"
+              className="gap-1.5 px-2 text-muted-foreground sm:px-2.5"
             >
               <Languages className="size-5" />
-              <span className="text-sm font-semibold">{t("nav.language")}</span>
+              <span className="hidden text-sm font-semibold sm:inline">{t("nav.language")}</span>
             </Button>
             <Button
               asChild
@@ -89,7 +92,7 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
               size="icon-lg"
               aria-label={t("nav.tariff")}
               className={cn(
-                "text-muted-foreground md:hidden",
+                "size-9 text-muted-foreground md:hidden",
                 pathname === "/tariff" && "text-foreground",
               )}
             >
@@ -103,7 +106,7 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
               size="icon-lg"
               aria-label={t("nav.seasons")}
               className={cn(
-                "text-muted-foreground md:hidden",
+                "size-9 text-muted-foreground md:hidden",
                 pathname === "/seasons" && "text-foreground",
               )}
             >
@@ -117,7 +120,7 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
               size="icon-lg"
               aria-label={t("nav.settings")}
               className={cn(
-                "text-muted-foreground",
+                "size-9 text-muted-foreground md:size-10",
                 pathname === "/settings" && "text-foreground",
               )}
             >
@@ -130,7 +133,7 @@ export function AppNav({ rooms }: { rooms: Room[] }) {
               size="icon-lg"
               aria-label={t("nav.signOut")}
               onClick={() => logout()}
-              className="text-muted-foreground"
+              className="size-9 text-muted-foreground md:size-10"
             >
               <LogOut className="size-5 rtl:-scale-x-100" />
             </Button>

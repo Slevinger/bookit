@@ -40,3 +40,16 @@ export async function saveSeasonRangesAction(
     return { ok: false, error: toError(error) };
   }
 }
+
+export async function removeSeasonHolidayAction(
+  date: string,
+): Promise<ActionResult<SeasonConfig>> {
+  try {
+    const { seasonService } = getTenantContainer(await requireTenant());
+    const config = await seasonService.removeHoliday(date);
+    revalidateSeason();
+    return { ok: true, data: config };
+  } catch (error) {
+    return { ok: false, error: toError(error) };
+  }
+}
